@@ -1,0 +1,7 @@
+<div class="container">
+    <ul class="player-cards">
+    @for(card of cards; track $index) {
+        <app-cards [card]="card"/>
+    }
+    </ul>
+</div>

@@ -1,0 +1,25 @@
+<div class="container">
+    <header>
+        <h1>{{gameTitle}}</h1>
+        <h2>How to play?</h2>
+        <p>{{howToPlay}}</p>
+    </header>
+    <main>
+        @if(allowMultiplePlayers) {
+        <p>How many other players?</p>
+        <label>
+            <input type="radio" name="playerCount" value="1"/>
+            1 Player
+        </label>
+        <label>
+            <input type="radio" name="playerCount" value="2"/>
+            2 Players
+        </label>
+        <label>
+            <input type="radio" name="playerCount" value="3"/>
+            3 Players
+        </label>
+    }
+        <button [routerLink]="['/Blackjack']">Play</button>
+    </main>
+</div>

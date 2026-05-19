@@ -1,0 +1,41 @@
+<div class="container">
+    <section class="dealer">
+        <div class="dealers-cards">
+            @for(card of this.BlackJackService.players().at(1)!.hand; track $index) {
+                <app-cards [card]="card"/>
+            }
+        </div>
+    <h1>Dealer</h1>
+    <p>Score: {{this.BlackJackService.players().at(1)!.score}}</p>
+    @if(this.currentPlayer() == 1) {<h1 style="color: red;">&uarr;</h1>}
+    </section>
+    <section class="player">
+        @if(this.currentPlayer() == 0) {<h1 style="color: red;">&darr;</h1>}
+        <h1>You</h1>
+        <p>Score: {{this.BlackJackService.players().at(0)!.score}}</p>
+        <app-player />
+        <div class="player-buttons">
+            <button (click)="playerHit()" [disabled]="this.BlackJackService.players().at(0)!.score > 21">Hit</button>
+            <button (click)="playerStand()">Stand</button>
+        </div>
+    </section>
+</div>
+
+<!-- Modal -->
+ @if(winner.winner != '') {
+    <div class="modal-background">
+        <div class="modal-container">
+            <header>
+                <h1> <span>{{winner.winner}}</span> Wins!</h1>
+                <hr />
+            </header>
+            <main>
+                <p>{{winner.message}}</p>
+            </main>
+            <footer>
+                <button (click)="restartGame()">Play Again</button>
+                <button (click)="restartGame()" [routerLink]="['/Blackjack-Start']">Quit</button>
+            </footer>
+        </div>
+    </div>
+ }

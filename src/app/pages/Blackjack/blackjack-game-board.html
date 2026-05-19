@@ -1,19 +1,27 @@
 <div class="container">
+    <button class="exit-button" (click)="restartGame()" [routerLink]="['/']">Quit</button>
     <section class="dealer">
         <div class="dealers-cards">
             @for(card of this.BlackJackService.players().at(1)!.hand; track $index) {
-                <app-cards [card]="card"/>
+                    @if($index == 1) {
+                        <app-cards [card]="card" [isCardHidden]="winner.winner === ''"/>
+                    } @else {
+                        <app-cards [card]="card"/>
+                    }
             }
         </div>
-    <h1>Dealer</h1>
-    <p>Score: {{this.BlackJackService.players().at(1)!.score}}</p>
+    <h1 class="player-titles">Dealer</h1>
     @if(this.currentPlayer() == 1) {<h1 style="color: red;">&uarr;</h1>}
     </section>
     <section class="player">
         @if(this.currentPlayer() == 0) {<h1 style="color: red;">&darr;</h1>}
-        <h1>You</h1>
-        <p>Score: {{this.BlackJackService.players().at(0)!.score}}</p>
-        <app-player />
+        <h1 class="player-titles">You</h1>
+        <h3>Score: {{this.BlackJackService.players().at(0)!.score}}</h3>
+        <div class="player-cards">
+            @for(card of this.BlackJackService.players().at(0)!.hand; track $index) {
+                <app-cards [card]="card"/>
+            }
+        </div>
         <div class="player-buttons">
             <button (click)="playerHit()" [disabled]="this.BlackJackService.players().at(0)!.score > 21">Hit</button>
             <button (click)="playerStand()">Stand</button>
@@ -22,7 +30,7 @@
 </div>
 
 <!-- Modal -->
- @if(winner.winner != '') {
+ @if(showWinner()) {
     <div class="modal-background">
         <div class="modal-container">
             <header>
@@ -34,7 +42,7 @@
             </main>
             <footer>
                 <button (click)="restartGame()">Play Again</button>
-                <button (click)="restartGame()" [routerLink]="['/Blackjack-Start']">Quit</button>
+                <button (click)="restartGame()" [routerLink]="['/']">Quit</button>
             </footer>
         </div>
     </div>

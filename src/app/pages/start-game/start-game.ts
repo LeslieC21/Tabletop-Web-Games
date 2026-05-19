@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 
 @Component({
@@ -9,6 +9,7 @@ import { Router, RouterLink } from '@angular/router';
 })
 export class StartGame {
   gameTitle = 'Blackjack';
-  howToPlay = '';
+  instructions = 'This is my body!';
   allowMultiplePlayers = false;
+  showInstructions = signal<boolean>(false);
 }

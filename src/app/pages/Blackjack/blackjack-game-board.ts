@@ -1,20 +1,20 @@
-import { Component, inject, effect } from '@angular/core';
+import { Component, inject, effect, signal } from '@angular/core';
 import { RouterLink } from '@angular/router'
 import confetti from 'canvas-confetti';
 
 import { BlackJackService } from '../../core/GameServices/blackjack';
-import { Player } from '../../components/player/player';
 import { Cards } from '../../components/cards/cards';
 
 @Component({
   selector: 'app-game-board',
-  imports: [Player, Cards, RouterLink],
+  imports: [Cards, RouterLink],
   templateUrl: './blackjack-game-board.html',
   styleUrl: './blackjack-game-board.css',
 })
 export class BlackJackGameBoard {
   BlackJackService = inject(BlackJackService);
   currentPlayer = this.BlackJackService.currentPlayersTurn;
+  showWinner = signal<boolean>(false);
   winner = {
     winner: '',
     message: ''
@@ -24,9 +24,12 @@ export class BlackJackGameBoard {
     effect(() => {
       if(this.currentPlayer() > this.BlackJackService.players().length - 1) {
         this.winner = this.BlackJackService.determineWinner();
+        setTimeout(() => {
+        this.showWinner.set(true);
         if(this.winner.winner == 'Player') {
-          this.launchConfetti();
-        }
+            this.launchConfetti();
+          }
+        }, 2800)
       }
     })
   }
@@ -50,6 +53,7 @@ export class BlackJackGameBoard {
 
   restartGame() {
     // Reset winner
+    this.showWinner.set(false)
     this.winner = {
       winner: '',
       message: ''
@@ -59,6 +63,6 @@ export class BlackJackGameBoard {
   }
 
  ngOnInit() {
-  this.BlackJackService.dealDeck();
+  this.restartGame();
  }
 }

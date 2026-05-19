@@ -2,7 +2,6 @@ import { effect, Injectable, signal } from "@angular/core";
 
 import { DECK } from "../constants/deck";
 import { PlayerModel } from "../models/Player";
-import { reset } from "canvas-confetti";
 
 @Injectable({
     providedIn: 'root'
@@ -27,20 +26,23 @@ export class BlackJackService {
                     this.dealerTurn();
             }
         })
+    }   
+
+    logPlayers() {
+        for(let player of this.players()) {
+            console.log(player)
+        }
     }
 
     resetGame() {
         // Reset players scores, and hands
         // RESET DOESNT WORK
-        this.players.update(players => {
-            const updatedPlayers = [...players];
-            updatedPlayers.forEach(player => {
-                return { ...player, hand: [], score: 0}
-            })
-            return updatedPlayers;
-        })
 
-        console.log(this.players())
+        this.players.set([
+        { name: 'Player1', hand: [], score: 0 },
+        { name: 'Dealer', hand: [], score: 0 }
+        ])
+
         // set current players turn back to the player
         this.currentPlayersTurn.set(0);
 
@@ -75,6 +77,7 @@ export class BlackJackService {
     endTurn() {
         // Move to the next player's turn
         this.currentPlayersTurn.set(this.currentPlayersTurn() + 1);
+        console.log(this.currentPlayersTurn() + "Turn");
     }
 
     // Method to draw another card "Hit"
@@ -114,10 +117,14 @@ export class BlackJackService {
 
     // Method to play dealer's turn
     async dealerTurn() {
-        // Dealer must hit until they have 17 or more
-        while(this.players().at(1)!.score < 17) {
-            await this.dealerPlayingDelay(2000);
-            this.playerHit();
+        // Check if Player bust - if so auto determine winner (Dealer)
+        this.calculateScore();
+        if(this.players().at(0)!.score <= 21) {
+            // Dealer must hit until they have 17 or more
+            while(this.players().at(1)!.score < 17) {
+                await this.dealerPlayingDelay(2000);
+                this.playerHit();
+            }
         }
 
         // End Turn
@@ -147,11 +154,18 @@ export class BlackJackService {
                 message: 'Player wins with a score of ' + playerScore
             }
         }
-        else {
+        else if(dealerScore > playerScore){
             return {
                 winner: 'Dealer',
-                message: 'It\'s a tie!'
+                message: 'Dealer wins with a score of ' + dealerScore
             }
         }
+        else {
+            return {
+                winner: 'Tie',
+                message: 'It\'s a tie! Dealer and Player have the same score.'
+            }
+        }
+
     }
 }

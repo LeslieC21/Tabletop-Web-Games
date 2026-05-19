@@ -4,5 +4,178 @@
     justify-content: center;
     align-items: center;
     height: 100vh;
-    background-color: #305A4A;
+    background-color: #305a4a;
+    background-image: url('/game-board-texture.jpg');
+    background-position: center;
+    background-blend-mode: soft-light;
+    background-repeat: no-repeat;
+    background-size: cover;;
+}
+
+header {
+    font-size: larger;
+    text-align: center;
+    margin: 0;
+}
+
+header > h1 {
+    font-family: 'Gagalin', sans-serif;
+    letter-spacing: 5px;
+    margin: 0;
+}
+
+button {
+    border: none;
+    background: none;
+}
+
+.play-button {
+    box-shadow: 1px 2px 5px black;
+    border-radius: 10px;
+    padding: 1rem;
+    font-size: 25px;
+    font-family: 'Gagalin', sans-serif;
+    letter-spacing: 3px;
+    margin-top: 2rem;
+}
+
+.how-to-play {
+    padding: 0;
+    margin: 0;
+}
+
+button:hover {
+    color: red;
+    cursor: pointer;
+}
+
+.card-container {
+    display: flex;
+    flex-direction: column;
+    border-radius: 10px;
+    background-color: white;
+    height: 80%;
+    aspect-ratio: 5/7;
+    box-shadow: 4px 4px 10px black;
+}
+
+.card-inner {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+.card-suit-top {
+    margin: 1rem;
+    width: 3rem;
+    text-align: center;
+}
+
+.card-suit-top > h1, .card-suit-bot > h1 {
+    text-align: center;
+    max-width: 20px;
+    padding: 0;
+    margin: auto;
+    font-size: 36px;
+    font-weight: 800;
+}
+
+.card-suit-bot > h1 {
+    rotate: 180deg;
+}
+
+.card-suit-bot {
+    margin: 1rem 1rem 1rem auto;
+    width: 3rem;
+    text-align: center;
+}
+
+main {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+}
+
+img {
+    height: 3rem;
+    width: 3rem;
+}
+
+ul {
+    margin: 0;
+    padding: 0;
+}
+
+.quit {
+    margin: 1rem 2rem;
+    position: fixed;
+    top: 0;
+    right: 0;
+    font-family: 'Gagalin', sans-serif;
+    font-size: 200%;
+    letter-spacing: 3px;
+    border: none;
+    background: none;
+    border-bottom: 2px solid black;
+}
+
+.modal {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #0127178e;
+}
+
+.modal-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    align-items: center;
+    background-color: white;
+    padding: 1rem;
+    border-radius: 5px;
+    width: 40%;
+    height: 50%;
+    text-align: center;
+}
+
+.modal-title {
+    font-family: 'Gagalin', sans-serif;
+    letter-spacing: 3px;
+    margin: 2rem 1rem;
+}
+
+.modal-body {
+    width: 100%;
+}
+
+.modal-exit-button {
+    font-family: 'Gagalin', sans-serif;
+    letter-spacing: 3px;
+    margin: 1.5rem 1rem 1rem 1rem;
+    padding: 0.5rem 1rem;
+    background: #305a4aaf;
+    border-radius: 5px;
+}
+
+.modal-buttons {
+    border-top: 2px solid rgba(128, 128, 128, 0.199);
+    margin-top: auto;
+    width: 100%;
+}
+
+.modal-exit {
+    margin-left: auto;
+    font-size: 20px;
+    height: 30px;
+    width: 30px;
 }

@@ -1,4 +1,10 @@
-export type Suit = 'Hearts' | 'Diamonds' | 'Clubs' | 'Spades';
+export type Suit = 
+    { name: 'Hearts', imageUrl: '/Hearts.png'} | 
+    { name: 'Diamonds', imageUrl: '/Diamonds.png'} | 
+    { name: 'Clubs', imageUrl: '/Clubs.png'} | 
+    { name: 'Spades', imageUrl: '/Spades.png'};
+
+// export type Suit = 'Hearts' | 'Diamonds' | 'Clubs' | 'Spades';
 export type Rank = '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K' | 'A';
 
 export interface Card {
@@ -7,7 +13,14 @@ export interface Card {
     value: number;
 }
 
-export const SUITS: Suit[] = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
+export const SUITS: Suit[] = [
+    { name: 'Hearts', imageUrl: '/Hearts.png' },
+    { name: 'Diamonds', imageUrl: '/Diamonds.png'}, 
+    { name: 'Clubs', imageUrl: '/Clubs.png'}, 
+    { name: 'Spades', imageUrl: '/Spades.png'}
+];
+
+// export const SUITS: Suit[] = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
 
 export const RANK_VALUES: Record<Rank, number> = {
     '2': 2,

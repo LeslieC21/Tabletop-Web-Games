@@ -1,25 +1,68 @@
 <div class="container">
-    <header>
-        <h1>{{gameTitle}}</h1>
-        <h2>How to play?</h2>
-        <p>{{howToPlay}}</p>
-    </header>
-    <main>
-        @if(allowMultiplePlayers) {
-        <p>How many other players?</p>
-        <label>
-            <input type="radio" name="playerCount" value="1"/>
-            1 Player
-        </label>
-        <label>
-            <input type="radio" name="playerCount" value="2"/>
-            2 Players
-        </label>
-        <label>
-            <input type="radio" name="playerCount" value="3"/>
-            3 Players
-        </label>
-    }
-        <button [routerLink]="['/Blackjack']">Play</button>
-    </main>
+    <button [routerLink]="['/']" class="quit">Quit</button>
+    <div class="card-container">
+        <section class="card-suit-top">
+            <h1>1</h1>
+            <img 
+                src="Spades.png" 
+                alt="Playing Card Spade" 
+                height="65px" 
+                width="65px"
+            />
+        </section>
+        <div class="card-inner">
+            <header>
+                <h1>{{gameTitle}}</h1>
+                <button class="how-to-play" (click)="showInstructions.set(true)">
+                    <h2>How to play?</h2>
+                </button>
+            </header>
+            <main>
+                @if(allowMultiplePlayers) {
+                <p>How many other players?</p>
+                <ul>
+                    <label>
+                        <input type="radio" name="playerCount" value="1"/>
+                        1 Player
+                    </label>
+                    <label>
+                        <input type="radio" name="playerCount" value="2"/>
+                        2 Players
+                    </label>
+                    <label>
+                        <input type="radio" name="playerCount" value="3"/>
+                        3 Players
+                    </label>
+                </ul>
+            }
+                <button class="play-button" [routerLink]="['/Blackjack']">Play</button>
+            </main>
+        </div>
+        <section class="card-suit-bot">
+            <img 
+                src="Spades.png" 
+                alt="Playing Card Spade" 
+                height="65px" 
+                width="65px"
+            />
+            <h1>1</h1>
+        </section>
+    </div>
 </div>
+
+@if(showInstructions()) {
+<div class="modal">
+    <div class="modal-container">
+        <button class="modal-exit" (click)="showInstructions.set(false)">&times;</button>
+        <div class="modal-title">
+            <h1>How to Play {{gameTitle}}</h1>
+        </div>
+        <div class="modal-body">
+            <p>{{instructions}}</p>
+        </div>
+        <div class="modal-buttons">
+            <button class="modal-exit-button" (click)="showInstructions.set(false)">Ok</button>
+        </div>
+    </div>
+</div>
+}

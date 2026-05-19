@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, signal } from '@angular/core';
 
 import { Card } from '../../core/constants/deck';
 
@@ -10,4 +10,6 @@ import { Card } from '../../core/constants/deck';
 })
 export class Cards {
   @Input({ required: true}) card!: Card;
+  @Input () isCardHidden: boolean = false;
+  @Input () isFlipped: boolean = false;
 }

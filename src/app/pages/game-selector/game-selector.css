@@ -1,0 +1,50 @@
+.container {
+    height: 100vh;
+    width: 100vw;
+    margin: 0;
+    padding: 1rem;
+    text-align: center;
+    background-color: #305A4A;
+}
+
+h1 {
+    font-family: 'Gagalin', sans-serif;
+    font-weight: 400;
+    padding-bottom: 2rem;
+    border-bottom: 2px solid #163328;
+}
+
+ul {
+    display: flex;
+    margin: 0;
+    padding: 0;
+}
+
+li {
+    margin: 3rem;
+    color: black;
+    list-style-type: none;
+    text-decoration: none;
+}
+
+button {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    box-shadow: 1px 2px 5px black;
+    border-radius: 10px;
+    font-family: 'Gagalin', sans-serif;
+}
+
+button:hover {
+    color:red;
+}
+
+span {
+    font-size: 25px;
+}

@@ -9,10 +9,10 @@ import { Cards } from '../../components/cards/cards';
 @Component({
   selector: 'app-game-board',
   imports: [Player, Cards, RouterLink],
-  templateUrl: './game-board.html',
-  styleUrl: './game-board.css',
+  templateUrl: './blackjack-game-board.html',
+  styleUrl: './blackjack-game-board.css',
 })
-export class GameBoard {
+export class BlackJackGameBoard {
   BlackJackService = inject(BlackJackService);
   currentPlayer = this.BlackJackService.currentPlayersTurn;
   winner = {

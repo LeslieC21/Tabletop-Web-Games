@@ -1,12 +1,13 @@
 import { Routes } from '@angular/router';
 
 import { StartGame } from './pages/start-game/start-game';
-import { GameBoard } from './pages/game-board/game-board';
+import { BlackJackGameBoard } from './pages/Blackjack/blackjack-game-board';
+import { GameSelector } from './pages/game-selector/game-selector';
 
 export const routes: Routes = [
     {
         path: '',
-        component: StartGame
+        component: GameSelector
     },
     {
         path: 'Blackjack-Start',
@@ -14,7 +15,7 @@ export const routes: Routes = [
     },
     {
         path: 'Blackjack',
-        component: GameBoard
+        component: BlackJackGameBoard
     },
     {
         path: '**',

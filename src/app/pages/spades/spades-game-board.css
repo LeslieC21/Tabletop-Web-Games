@@ -1,0 +1,171 @@
+.container {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    width: 100vw;
+    height: 100vh;
+    background-color: #305a4a;
+    background-image: url('/game-board-texture.jpg');
+    background-position: center;
+    background-blend-mode: soft-light;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+.player-titles {
+    font-family: 'Gagalin', sans-serif;
+}
+
+.player {
+    width: 100%;
+    margin-top: auto;
+}
+
+.dealer {
+    width: 100%;
+}
+
+.card-scroll-wrapper {
+    width: 95%;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: visible;
+    margin: 0 auto;
+}
+
+.dealers-cards, .player-cards {
+    box-sizing: border-box;
+    display: inline-flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin-top: 1rem;
+    overflow: visible;
+}
+
+section {
+    box-sizing: border-box;
+    margin: 3rem;
+    text-align: center;
+}
+
+.activeTurn {
+    border: 2px solid rgb(146, 5, 5);;
+}
+
+.modal-background {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: fixed;
+    text-align: center;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 100vw;
+    background-color: #1222188a;
+    z-index: 30;
+}
+
+.modal-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 2px 2px 5px black;
+    padding: 2rem;
+    margin: 1rem;
+    width: 50%;
+}
+
+header span {
+    color: rgb(146, 5, 5);;
+}
+
+footer {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    margin-top: 3rem;
+}
+
+main {
+    margin-top: 2rem;
+}
+
+footer button {
+    font-family: sans-serif;
+    font-weight: 700;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    border: transparent;
+    background: #305a4aaf;
+}
+
+footer button:hover {
+    box-shadow: 2px 2px 2px black;
+}
+
+.player-buttons > button {
+    margin: 1rem 2rem 1rem 2rem;
+    padding: .5rem;
+    font-family: 'Gagalin', sans-serif;
+    font-size: 1.5rem;
+    letter-spacing: 3px;
+    border: none;
+    background: #8aa79c;
+    box-shadow: 5px 5px 5px black;
+    
+}
+
+.exit-button {
+    margin: 0.5rem 1rem;
+    position: fixed;
+    top: 0;
+    right: 0;
+    font-family: 'Gagalin', sans-serif;
+    font-size: 200%;
+    letter-spacing: 3px;
+    border: none;
+    background: none;
+    border-bottom: 2px solid black;
+}
+
+button:hover {
+    color: rgb(146, 5, 5);
+    cursor: pointer;
+}
+
+.card, .card-hidden {
+    position: relative;
+    flex-shrink: 0;
+    z-index: 10;
+    margin-left: -7em;
+}
+
+.card:first-child, .card-hidden:first-child {
+    margin-left: 0;
+}
+
+/* Lift card on hover so it rises above neighbors */
+.card:hover {
+    z-index: 20;
+    transform: translateY(-20px);
+}
+
+.selectedCard {
+    transform: translateY(-20px);
+}
+
+.showModal-button {
+    text-align: center;
+    margin: 0 0 .5em 0;
+    padding: 0 .5em;
+    font-size: 20px;
+    font-weight: 400;
+    color: rgb(6, 129, 167);
+    background-color: rgba(232, 252, 255, 0.493);
+    border: 2px solid rgba(232, 252, 255, 0.493);
+    border-radius: 10px;
+    z-index: 40;
+}

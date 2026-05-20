@@ -1,6 +1,6 @@
 import { effect, Injectable, signal } from "@angular/core";
 
-import { DECK } from "../constants/deck";
+import { BJ_DECK, DECK } from "../constants/deck";
 import { PlayerModel } from "../models/Player";
 
 @Injectable({
@@ -8,10 +8,10 @@ import { PlayerModel } from "../models/Player";
 })
 
 export class BlackJackService {
-    readonly gameDeck = DECK;
+    readonly gameDeck = BJ_DECK;
     players = signal<PlayerModel[]>([
-        { name: 'Player1', hand: [], score: 0 },
-        { name: 'Dealer', hand: [], score: 0 }
+        { id: 0, name: 'Player1', hand: [], score: 0 },
+        { id: 1, name: 'Dealer', hand: [], score: 0 }
     ])
     currentPlayersTurn = signal<number>(0);
     private dealerPlayingDelay(ms: number): Promise<void> {
@@ -39,8 +39,8 @@ export class BlackJackService {
         // RESET DOESNT WORK
 
         this.players.set([
-        { name: 'Player1', hand: [], score: 0 },
-        { name: 'Dealer', hand: [], score: 0 }
+        { id: 0, name: 'Player1', hand: [], score: 0 },
+        { id: 1, name: 'Dealer', hand: [], score: 0 }
         ])
 
         // set current players turn back to the player

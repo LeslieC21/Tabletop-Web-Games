@@ -3,6 +3,7 @@ import { Routes } from '@angular/router';
 import { StartGame } from './pages/start-game/start-game';
 import { BlackJackGameBoard } from './pages/Blackjack/blackjack-game-board';
 import { GameSelector } from './pages/game-selector/game-selector';
+import { SpadesGameBoard } from './pages/spades/spades-game-board';
 
 export const routes: Routes = [
     {
@@ -18,7 +19,11 @@ export const routes: Routes = [
         component: BlackJackGameBoard
     },
     {
+        path: 'Spades',
+        component: SpadesGameBoard
+    },
+    {
         path: '**',
-        redirectTo: 'Blackjack-Start'
+        redirectTo: ''
     }
 ];

@@ -12,4 +12,5 @@ export class Cards {
   @Input({ required: true}) card!: Card;
   @Input () isCardHidden: boolean = false;
   @Input () isFlipped: boolean = false;
+  @Input() displayManyCards: boolean = true;
 }

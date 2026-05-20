@@ -23,8 +23,8 @@
             }
         </div>
         <div class="player-buttons">
-            <button (click)="playerHit()" [disabled]="this.BlackJackService.players().at(0)!.score > 21">Hit</button>
-            <button (click)="playerStand()">Stand</button>
+            <button (click)="playerHit()" [disabled]="this.BlackJackService.players().at(0)!.score > 21 ">Hit</button>
+            <button (click)="playerStand()" [disabled]="this.BlackJackService.currentPlayersTurn() === 1">Stand</button>
         </div>
     </section>
 </div>

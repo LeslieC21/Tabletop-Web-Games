@@ -6,7 +6,7 @@ import { BlackJackService } from '../../core/GameServices/blackjack';
 import { Cards } from '../../components/cards/cards';
 
 @Component({
-  selector: 'app-game-board',
+  selector: 'app-blackjack-game-board',
   imports: [Cards, RouterLink],
   templateUrl: './blackjack-game-board.html',
   styleUrl: './blackjack-game-board.css',

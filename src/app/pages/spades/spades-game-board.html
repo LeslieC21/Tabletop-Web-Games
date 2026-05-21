@@ -37,12 +37,12 @@
     <div class="modal-background">
         <div class="modal-container">
             <header>
-                <h1>Select your <span>bid</span></h1>
+                <h1>Select your <span>bid</span> {{playerName}}</h1>
                 <hr />
             </header>
             <main>
                 <p>A bid is how many rounds of cards you expect to win.</p>
-                <input id="bid" type="number" [defaultValue]="0" max="{{SpadesService.players().at(0)!.hand.length-1}}" />
+                <input id="bid" type="number" [defaultValue]="0" max="{{SpadesService.players().at(0)!.hand!.length}}" min="0"/>
             </main>
             <footer>
                 <button (click)="setPlayerBid()">Submit Bid</button>

@@ -3,6 +3,8 @@ import { RouterLink } from '@angular/router';
 
 import { Cards } from '../../components/cards/cards';
 import { SpadesService } from '../../core/GameServices/spades';
+import { Player } from '../../components/player/player';
+import { GameSocketService } from '../../core/ConnectionServices/GameSocketService';
 
 @Component({
   selector: 'app-spades-game-board',
@@ -12,8 +14,11 @@ import { SpadesService } from '../../core/GameServices/spades';
 })
 
 export class SpadesGameBoard {
-  SpadesService = inject(SpadesService); 
+  SpadesService = inject(SpadesService);
+  gameSocket = inject(GameSocketService);
+  
   currentPlayer = this.SpadesService.currentPlayersTurn;
+  playerName = this.SpadesService.players().at(this.currentPlayer())!.name;
   gameRound = this.SpadesService.gameRounds;
   selectedCard: number | null = (null);
   showBidModal = signal<boolean>(false);
@@ -22,8 +27,10 @@ export class SpadesGameBoard {
   constructor() {
     effect(() => {
       if(this.gameRound() === 0 && this.currentPlayer() === 1) {
-        // Prompt the user to select their bid!
-        this.showBidModal.set(true);
+        setTimeout(() => {
+          // Prompt the user to select their bid!
+          this.showBidModal.set(true);
+        }, 5000)
       }
     })
   }

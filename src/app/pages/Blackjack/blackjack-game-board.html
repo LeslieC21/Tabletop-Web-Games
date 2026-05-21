@@ -3,7 +3,7 @@
     <section class="dealer">
         <div class="dealers-cards">
             @for(card of this.BlackJackService.players().at(1)!.hand; track $index) {
-                    @if($index == 1) {
+                    @if($index == 0) {
                         <app-cards [card]="card" [isCardHidden]="winner.winner === ''"/>
                     } @else {
                         <app-cards [card]="card"/>
@@ -23,7 +23,7 @@
             }
         </div>
         <div class="player-buttons">
-            <button (click)="playerHit()" [disabled]="this.BlackJackService.players().at(0)!.score > 21 ">Hit</button>
+            <button (click)="playerHit()" [disabled]="this.BlackJackService.players().at(0)!.score > 21 || this.BlackJackService.currentPlayersTurn() === 1">Hit</button>
             <button (click)="playerStand()" [disabled]="this.BlackJackService.currentPlayersTurn() === 1">Stand</button>
         </div>
     </section>

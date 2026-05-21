@@ -129,6 +129,7 @@ footer button:hover {
     border: none;
     background: none;
     border-bottom: 2px solid black;
+    z-index: 40;
 }
 
 button:hover {

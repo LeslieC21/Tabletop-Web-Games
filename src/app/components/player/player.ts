@@ -6,18 +6,10 @@ import { Cards } from '../cards/cards';
 
 @Component({
   selector: 'app-player',
-  imports: [Cards],
+  imports: [],
   templateUrl: './player.html',
   styleUrl: './player.css',
 })
 export class Player {
-  BService = inject(BlackJackService);
-
-  cards: Card[] = this.BService.players().at(0)!.hand
-
-  constructor() {
-    effect(() => {
-      console.log("Player Effect ran!")
-    })
-  }
+  
 }

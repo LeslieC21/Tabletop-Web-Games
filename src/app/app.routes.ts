@@ -11,15 +11,15 @@ export const routes: Routes = [
         component: GameSelector
     },
     {
-        path: 'Blackjack-Start',
+        path: 'GameLobby/:game',
         component: StartGame
     },
     {
-        path: 'Blackjack',
+        path: 'Play/Blackjack',
         component: BlackJackGameBoard
     },
     {
-        path: 'Spades',
+        path: 'Play/Spades',
         component: SpadesGameBoard
     },
     {

@@ -19,24 +19,79 @@
             </header>
             <main>
                 @if(allowMultiplePlayers) {
-                <p>How many other players?</p>
-                <ul>
-                    <label>
-                        <input type="radio" name="playerCount" value="1"/>
-                        1 Player
-                    </label>
-                    <label>
-                        <input type="radio" name="playerCount" value="2"/>
-                        2 Players
-                    </label>
-                    <label>
-                        <input type="radio" name="playerCount" value="3"/>
-                        3 Players
-                    </label>
-                </ul>
-            }
-                <button class="play-button" [routerLink]="['/Blackjack']">Play</button>
+                    @if(!inRoom()) {
+                        <fieldset class="actions">
+                            <legend>Create Room or Join Room</legend>
+                            <div class="join-row">
+                                <input [(ngModel)]="playerName" placeholder="Your Name" />
+                                <button (click)="createRoom()" [disabled]="!playerName">Create Room</button>
+                            </div>
+
+                            <div class="join-row">
+                                <input [(ngModel)]="joinCode" placeholder="Room code" maxlength="6" />
+                                <button (click)="joinRoom()" [disabled]="!playerName || !joinCode">Join</button>
+                            </div>
+
+                            @if(errorMsg) {
+                                <p class="error">{{errorMsg}}</p> 
+                            }
+                        </fieldset>
+                    }
+
+                    @if(inRoom()) {
+                        <div class="room">
+                            <div class="room-header">
+                                <span class="room-code">Room: {{ roomCode }}</span>
+                            </div>
+
+                            <div class="players">
+                                
+                                <fieldset>
+                                    <legend>Player List ({{ players.length }})</legend>
+                                <ul>
+                                    @for(p of players; track $index) {
+                                        <li>
+                                        @if(p.isHost) {
+                                            <span> (Host) </span>
+                                        }
+                                        @if(p.id === myId){
+                                            <span> (You) </span>
+                                        }
+                                        {{ p.name }}</li> 
+                                    }
+                                </ul>
+                                <button class="leave-btn" (click)="leaveRoom()">Leave Room</button>
+                                </fieldset>
+                            </div>
+
+                            <!-- <button class="leave-btn" (click)="leaveRoom()">Leave Room</button> -->
+                            @if(amHost && !gameStarted) {
+                                <button
+                                (click)="startGame()"
+                                [disabled]="players.length < 2"
+                                class="play-button">
+                                    Start Game
+                                </button>
+                            }
+
+                            @if(!amHost && !gameStarted) {
+                                <p class="waiting">
+                                    Waiting for host to start...
+                                </p>
+                            }
+
+                            @if(gameStarted) {
+                                <div class="game-area">
+                                    <app-spades-game-board />
+                                </div>
+                            }
+                        </div>
+                    }
+                }
             </main>
+            @if(!allowMultiplePlayers) {
+                <button class="play-button" [routerLink]="[`/Play/${gameTitle}`]">Start Game</button>
+            }
         </div>
         <section class="card-suit-bot">
             <img 

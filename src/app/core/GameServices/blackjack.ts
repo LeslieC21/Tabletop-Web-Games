@@ -1,17 +1,17 @@
 import { effect, Injectable, signal } from "@angular/core";
 
-import { BJ_DECK, DECK } from "../constants/deck";
-import { PlayerModel } from "../models/Player";
+import { BJ_DECK} from "../constants/deck";
+import { PlayerModel } from "../models/SinglePlayerModel";
 
 @Injectable({
     providedIn: 'root'
 })
 
 export class BlackJackService {
-    readonly gameDeck = BJ_DECK;
+    gameDeck = signal(structuredClone(BJ_DECK));
     players = signal<PlayerModel[]>([
-        { id: 0, name: 'Player1', hand: [], score: 0 },
-        { id: 1, name: 'Dealer', hand: [], score: 0 }
+        { name: 'Player1', hand: [], score: 0 },
+        { name: 'Dealer', hand: [], score: 0 }
     ])
     currentPlayersTurn = signal<number>(0);
     private dealerPlayingDelay(ms: number): Promise<void> {
@@ -28,19 +28,15 @@ export class BlackJackService {
         })
     }   
 
-    logPlayers() {
-        for(let player of this.players()) {
-            console.log(player)
-        }
-    }
-
     resetGame() {
         // Reset players scores, and hands
-        // RESET DOESNT WORK
+        console.log("Reset")
+        this.gameDeck.set(structuredClone(BJ_DECK));
+        console.log(this.gameDeck());
 
         this.players.set([
-        { id: 0, name: 'Player1', hand: [], score: 0 },
-        { id: 1, name: 'Dealer', hand: [], score: 0 }
+        { name: 'Player1', hand: [], score: 0 },
+        { name: 'Dealer', hand: [], score: 0 }
         ])
 
         // set current players turn back to the player
@@ -59,18 +55,18 @@ export class BlackJackService {
                 const card = this.drawRandomCard()
 
                 // Give cards to the player
-                player.hand.push(this.gameDeck.at(card)!)
-                player.score += this.gameDeck.at(card)!.value
+                player.hand.push(this.gameDeck().at(card)!)
+                player.score += this.gameDeck().at(card)!.value
 
                 // Take card out of the game deck
-                this.gameDeck.splice(card, 1)
+                this.gameDeck().splice(card, 1)
             }
         }
     }
 
     // Method to draw a random card
     drawRandomCard() {
-        return Math.ceil(Math.random() * this.gameDeck.length-1);
+        return Math.ceil(Math.random() * this.gameDeck().length-1);
     }
 
     // Method to end turn "Stand"
@@ -86,10 +82,10 @@ export class BlackJackService {
         const card = this.drawRandomCard()
         this.players.update(players => {
             const updatedPlayers = [...players];
-            updatedPlayers[this.currentPlayersTurn()] = { ...updatedPlayers[this.currentPlayersTurn()], hand: [...updatedPlayers[this.currentPlayersTurn()].hand, this.gameDeck.at(card)!] };
+            updatedPlayers[this.currentPlayersTurn()] = { ...updatedPlayers[this.currentPlayersTurn()], hand: [...updatedPlayers[this.currentPlayersTurn()].hand, this.gameDeck().at(card)!] };
             return updatedPlayers;
         })
-        this.gameDeck.splice(card, 1);
+        this.gameDeck().splice(card, 1);
 
         // Determine if player busted
         if(this.didPlayerBust()) this.endTurn()

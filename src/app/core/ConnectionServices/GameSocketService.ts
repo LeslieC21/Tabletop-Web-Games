@@ -62,9 +62,10 @@ export class GameSocketService implements OnDestroy{
 
     // Public state streams
     players$ = new BehaviorSubject<PlayerModel[]>([]);
-    gameState$ = new BehaviorSubject<GameState>({ started: false })
+    gameState$ = new BehaviorSubject<GameState>({ started: false });
     roomCode$ = new BehaviorSubject<string | null>(null);
     connected$ = new BehaviorSubject<boolean>(false);
+    myHand$ = new BehaviorSubject<Card[]>([]);
     error$ = new Subject<string>();
 
     // Event streams
@@ -72,34 +73,26 @@ export class GameSocketService implements OnDestroy{
     roomJoined$ = new Subject<RoomJoinedPayload>();
     playerJoined$ = new Subject<PlayerJoinedPayload>();
     playerLeft$ = new Subject<PlayerLeftPayload>();
-    gameStarted$ = new Subject<GameState>();
     gameUpdate$ = new Subject<GameUpdatePayload>();
-    myHand$ = new Subject<Card[]>();
     stateSynced$ = new Subject<StateSyncedPayload>();
 
     constructor(private ngZone: NgZone) {}
 
     connect(): void {
-        if (this.socket?.connected) return;
+        if (this.socket) return;
 
         this.socket = io(this.SERVER_URL, {
-            transports: ['websocket'],
+            transports: ['websocket', 'polling'],
             autoConnect: true
         });
 
-        this.ngZone.run(() => {
             this.socket.on('connect', () => {
-                console.log('Connected to game server:', this.socket.id);
                 this.connected$.next(true);
             });
-        });
 
-        this.ngZone.run(() => {
             this.socket.on('disconnect', () => {
-                console.log('Disconnected from game server');
                 this.connected$.next(false);
             });
-        });
 
         this.registerEvents();
     }
@@ -171,7 +164,7 @@ export class GameSocketService implements OnDestroy{
             this.ngZone.run(() => {
                 this.roomCode$.next(data.roomCode);
                 this.players$.next(data.players);
-                this.gameStarted$.next(data.gameState);
+                this.gameState$.next(data.gameState);
                 this.roomJoined$.next(data);
             });
         })
@@ -191,13 +184,14 @@ export class GameSocketService implements OnDestroy{
         });
 
         this.socket.on('game-started', ({ gameState }: { gameState: GameState}) => {
+            console.log('game-started received in service:', gameState);
             this.ngZone.run(() => {
                 this.gameState$.next(gameState);
-                this.gameStarted$.next(gameState);
             });
         });
 
         this.socket.on('game-update', (data: GameUpdatePayload) => {
+            console.log('game-update received:', data.action)
             this.ngZone.run(() => {
                 this.gameUpdate$.next(data);
             });

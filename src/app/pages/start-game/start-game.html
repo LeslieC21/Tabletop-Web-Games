@@ -1,3 +1,4 @@
+@if(!gameStarted()) {
 <div class="container">
     <button [routerLink]="['/']" class="quit">Quit</button>
     <div class="card-container">
@@ -47,9 +48,9 @@
                             <div class="players">
                                 
                                 <fieldset>
-                                    <legend>Player List ({{ players.length }})</legend>
+                                    <legend>Player List ({{ players().length }})</legend>
                                 <ul>
-                                    @for(p of players; track $index) {
+                                    @for(p of players(); track $index) {
                                         <li>
                                         @if(p.isHost) {
                                             <span> (Host) </span>
@@ -64,26 +65,19 @@
                                 </fieldset>
                             </div>
 
-                            <!-- <button class="leave-btn" (click)="leaveRoom()">Leave Room</button> -->
-                            @if(amHost && !gameStarted) {
+                            @if(amHost() && !gameStarted()) {
                                 <button
                                 (click)="startGame()"
-                                [disabled]="players.length < 2"
+                                [disabled]="players().length < 2"
                                 class="play-button">
                                     Start Game
                                 </button>
                             }
 
-                            @if(!amHost && !gameStarted) {
+                            @if(!amHost() && !gameStarted()) {
                                 <p class="waiting">
                                     Waiting for host to start...
                                 </p>
-                            }
-
-                            @if(gameStarted) {
-                                <div class="game-area">
-                                    <app-spades-game-board />
-                                </div>
                             }
                         </div>
                     }
@@ -94,16 +88,23 @@
             }
         </div>
         <section class="card-suit-bot">
+            <h1>1</h1>
             <img 
                 src="Spades.png" 
                 alt="Playing Card Spade" 
                 height="65px" 
                 width="65px"
             />
-            <h1>1</h1>
         </section>
     </div>
 </div>
+}
+
+@if((gameStarted())) {
+    <div class="game-area">
+            <app-spades-game-board />
+    </div>
+}
 
 @if(showInstructions()) {
 <div class="modal">
@@ -113,7 +114,7 @@
             <h1>How to Play {{gameTitle}}</h1>
         </div>
         <div class="modal-body">
-            <p>{{instructions}}</p>
+            <div [innerHTML]="instructions | markToHtml"></div>
         </div>
         <div class="modal-buttons">
             <button class="modal-exit-button" (click)="showInstructions.set(false)">Ok</button>

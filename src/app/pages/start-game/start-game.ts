@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, effect, NgZone, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -8,10 +8,11 @@ import { GameSocketService } from '../../core/ConnectionServices/GameSocketServi
 import { PlayerModel } from '../../core/models/PlayerModel';
 import { Game, GAME_RULES } from '../../core/constants/gameRules';
 import { SpadesGameBoard } from '../spades/spades-game-board';
+import { MarkdownPipe } from '../../core/OtherServices/MarkdownPipe';
 
 @Component({
   selector: 'app-start-game',
-  imports: [RouterLink, CommonModule, FormsModule, SpadesGameBoard],
+  imports: [RouterLink, CommonModule, FormsModule, SpadesGameBoard, MarkdownPipe],
   templateUrl: './start-game.html',
   styleUrl: './start-game.css',
 })
@@ -24,16 +25,16 @@ export class StartGame {
   playerName = '';
   joinCode = '';
   roomCode: string | null = null;
-  players: PlayerModel[] = [];
-  gameStarted = false;
+  players = signal<PlayerModel[]>([]);
+  gameStarted = signal<boolean>(false);
   inRoom = signal<boolean>(false);
-  amHost = false;
+  amHost = signal<boolean>(false);
   myId = '';
   errorMsg = '';
 
-    private subs = new Subscription();
+  private subs = new Subscription();
 
-  constructor(public gameSocket: GameSocketService, private route: ActivatedRoute) {
+  constructor(public gameSocket: GameSocketService, private route: ActivatedRoute, private cdr: ChangeDetectorRef) {
     this.gameTitle = this.route.snapshot.paramMap.get('game')! as Game;
     this.instructions = (GAME_RULES[this.gameTitle]).instructions;
     this.allowMultiplePlayers = (GAME_RULES[this.gameTitle]).allowMultiplayer;
@@ -52,33 +53,36 @@ export class StartGame {
 
     this.subs.add(
       this.gameSocket.roomCreated$.subscribe(({ roomCode, players }) => {
+        console.log('roomCreated$ fired, roomCode:', roomCode);
         this.roomCode = roomCode;
-        this.players = players;
+        this.players.set(players);
         this.inRoom.set(true);
-        this.amHost = true;
+        this.amHost.set(true);
       })
     );
 
     this.subs.add(
       this.gameSocket.roomJoined$.subscribe(({ roomCode, players, gameState }) => {
         this.roomCode = roomCode;
-        this.players = players;
-        this.gameStarted = gameState.started;
+        this.players.set(players);
+        this.gameStarted.set(gameState.started);
         this.inRoom.set(true);
-        this.amHost = this.gameSocket.isHost(players);
+        this.amHost.set(this.gameSocket.isHost(players));
       })
     );
 
     this.subs.add(
       this.gameSocket.players$.subscribe(players => {
-        this.players = players;
-        this.amHost = this.gameSocket.isHost(players);
+        this.players.set(players);
+        this.amHost.set(this.gameSocket.isHost(players));
       })
     );
 
     this.subs.add(
-      this.gameSocket.gameStarted$.subscribe(() => {
-        this.gameStarted = true;
+      this.gameSocket.gameState$.subscribe((state) => { 
+        console.log('gameState$ received:', state);
+        this.gameStarted.set(state.started);
+        this.cdr.markForCheck();
       })
     );
 
@@ -99,20 +103,23 @@ export class StartGame {
   }
 
   startGame(): void {
-    if(this.roomCode) this.gameSocket.startGame(this.roomCode);
+    console.log('roomCode when starting:', this.roomCode);
+    if(this.roomCode) {
+      this.gameSocket.startGame(this.roomCode);
+    }
   }
 
   leaveRoom(): void {
     this.gameSocket.disconnect();
-    this.gameSocket.connect();
     this.inRoom.set(false);
     this.roomCode = null;
-    this.players = [];
-    this.gameStarted = false;
+    this.players.set([]);
+    this.gameStarted.set(false);
   }
 
   ngOnDestroy(): void {
     this.subs.unsubscribe();
     this.gameSocket.disconnect();
+    this.gameStarted.set(false);
   }
 }

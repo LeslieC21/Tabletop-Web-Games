@@ -49,7 +49,10 @@ app.get("/room/:code", (req, res) => {
 
 io.on('connection', (socket) => {
     console.log(`Player connected: ${socket.id}`);
-    
+    socket.onAny((event, ...args) => {
+        console.log(`Received event: ${event}`, args);
+    });
+
     // CREATE ROOM
     socket.on("create-room", ({ playerName }) => {
         const roomCode = generateRoomCode();
@@ -63,7 +66,7 @@ io.on('connection', (socket) => {
                 hand: [],
                 bid: 0
             }],
-            gameState: { started: false},
+            gameState: { started: false },
         };
 
         socket.join(roomCode);
@@ -100,11 +103,10 @@ io.on('connection', (socket) => {
             hand: [],
             bid: 0,
         });
+
         socket.join(roomCode);
         socket.data.roomCode = roomCode;
         socket.data.playerName = playerName;
-
-        console.log(`${playerName} joined room: ${roomCode}`);
 
         // Tell the joining player the current state
         socket.emit("room-joined", {
@@ -135,10 +137,9 @@ io.on('connection', (socket) => {
         }
 
         room.gameState.started = true;
-        console.log(`Game started in room: ${roomCode}`);
 
         // Broadcast game starting to everyone in the room
-        io.to(room).emit("game-started", {
+        io.to(roomCode).emit("game-started", {
             gameState: room.gameState
         });
     });
@@ -147,8 +148,7 @@ io.on('connection', (socket) => {
     socket.on('game-action', ({ roomCode, action, payload }) => {
         const room = rooms[roomCode];
         if(!room) return;
-        
-        console.log(`Action in ${roomCode}: ${action}`, payload);
+
 
         // Update game state (game specific logic)
         socket.to(roomCode).emit("game-update", {
@@ -160,11 +160,13 @@ io.on('connection', (socket) => {
 
         // Give players their dealt hands
         socket.on('deal-hand', ({ targetPlayerId, hand }) => {
+            console.log("Player receieves " + hand);
             io.to(targetPlayerId).emit('deal-hand', { hand });
         });
 
         // SYNC GAME STATE
         socket.on("sync-state", ({ roomCode, gameState }) => {
+            console.log('sync-state received, broadcasting game-update to:', roomCode);
             const room = rooms[roomCode];
             if(!room) return;
 
@@ -174,8 +176,10 @@ io.on('connection', (socket) => {
             };
 
             // Push updated state to everyone except sender
-            socket.to(roomCode).emit("state-synced", {
-                gameState: room.gameState
+            socket.to(roomCode).emit("game-update", {
+                action: 'state-update',
+                payload: gameState,
+                from: socket.data.playerName
             });
         });
 

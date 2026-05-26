@@ -83,7 +83,7 @@ button:hover {
     font-weight: 800;
 }
 
-.card-suit-bot > h1 {
+.card-suit-bot {
     rotate: 180deg;
 }
 
@@ -143,9 +143,11 @@ ul {
     background-color: white;
     padding: 1rem;
     border-radius: 5px;
-    width: 40%;
-    height: 50%;
+    width: 60%;
+    height: 70%;
     text-align: center;
+    box-shadow: 5px 5px 5px black;
+    border: 2px solid #305a4a;
 }
 
 .modal-title {
@@ -156,6 +158,9 @@ ul {
 
 .modal-body {
     width: 100%;
+    overflow-y: auto;
+    border: 2px solid #305a4a;
+    border-radius: 10px;
 }
 
 .modal-exit-button {

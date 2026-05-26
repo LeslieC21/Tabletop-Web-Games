@@ -6,5 +6,6 @@ export interface PlayerModel {
     isHost: boolean;
     hand: Card[];
     score: number;
+    handScore: number;
     bid?: number;
 }

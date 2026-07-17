@@ -102,7 +102,7 @@
 
 @if((gameStarted())) {
     <div class="game-area">
-            <app-spades-game-board />
+            <app-spades-game-board (closeGame)="endGame()"/>
     </div>
 }
 

@@ -109,6 +109,13 @@ export class StartGame {
     }
   }
 
+  endGame(): void {
+    console.log("Ending game...");
+    if(this.roomCode) {
+      this.gameSocket.disconnect();
+    }
+  }
+
   leaveRoom(): void {
     this.gameSocket.disconnect();
     this.inRoom.set(false);

@@ -8,4 +8,5 @@ export interface PlayerModel {
     score: number;
     handScore: number;
     bid?: number;
+    showModal?: boolean;
 }

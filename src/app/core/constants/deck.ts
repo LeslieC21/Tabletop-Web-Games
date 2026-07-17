@@ -38,13 +38,13 @@ export const RANK_VALUES: Record<Rank, number> = {
     'A': 14
 }
 
-export const DECK: Card[] = SUITS.flatMap(suit => (
-    Object.keys(RANK_VALUES) as Rank[]).map(rank => ({
-        rank,
-        suit,
-        value: RANK_VALUES[rank]
-    }))
-);
+// export const DECK: Card[] = SUITS.flatMap(suit => (
+//     Object.keys(RANK_VALUES) as Rank[]).map(rank => ({
+//         rank,
+//         suit,
+//         value: RANK_VALUES[rank]
+//     }))
+// );
 
 export const BJ_RANK_VALUES: Record<Rank, number> = {
     '2': 2,
@@ -69,3 +69,12 @@ export const BJ_DECK: Card[] = SUITS.flatMap(suit => (
         value: BJ_RANK_VALUES[rank]
     }))
 );
+
+export const DECK: Card[] = [
+    { rank: '2', suit:{ name: 'Diamonds', imageUrl: '/Diamonds.png'}, value: 2},
+    { rank: '10', suit:{ name: 'Spades', imageUrl: '/Spades.png'}, value: 10},
+    { rank: '6', suit:{ name: 'Hearts', imageUrl: '/Hearts.png'}, value: 6},
+    { rank: 'K', suit:{ name: 'Spades', imageUrl: '/Spades.png'}, value: 13},
+    { rank: 'J', suit:{ name: 'Clubs', imageUrl: '/Clubs.png'}, value: 11},
+    { rank: 'A', suit:{ name: 'Hearts', imageUrl: '/Hearts.png'}, value: 14},
+]

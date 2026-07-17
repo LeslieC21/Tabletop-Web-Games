@@ -118,6 +118,10 @@ export class GameSocketService implements OnDestroy{
         this.socket.emit('start-game', { roomCode })
     }
 
+    leaveGame(roomCode: string): void {
+        this.socket.emit('end-game', { roomCode })
+    }
+
     // Game Actions
     sendAction(roomCode: string, action: string, payload: any): void {
         this.socket.emit('game-action', { 

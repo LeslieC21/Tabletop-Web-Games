@@ -1,5 +1,5 @@
 <div class="container">
-    <button class="exit-button" (click)="restartGame()" [routerLink]="['/']">Quit</button>
+    <button class="exit-button" (click)="leaveGame()" [routerLink]="['/']">Quit</button>
     <section class="dealer">
         <div class="card-scroll-wrapper">
             <div class="dealers-cards">
@@ -20,7 +20,7 @@
         @if(isMyTurn) {<h1 style="color: red;">&darr;</h1>}
         <h1 class="player-titles">You</h1>
         <h3>Team Bid: {{getTeamBid()}}</h3>
-        <h3>Your Score: {{myPlayer?.score}}</h3>
+        <h3>Your Score: {{myPlayer?.score}} Hand Score: {{myPlayer?.handScore}}</h3>
         <div class="card-scroll-wrapper">
             <div class="player-cards">
                 @for(card of myHand; track $index) {
@@ -34,7 +34,7 @@
             </div>
         </div>
         <div class="player-buttons">
-            <button (click)="playCard()" [disabled]="!isMyTurn">Play Card</button>
+            <button (click)="playCard()" [disabled]="!isMyTurn || !submittedBid">Play Card</button>
         </div>
     </section>
     @if(!submittedBid()) {

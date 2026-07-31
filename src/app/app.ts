@@ -1,5 +1,6 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { StoreService } from './core/GameServices/Store';
 
 @Component({
   selector: 'app-root',

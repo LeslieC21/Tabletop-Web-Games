@@ -52,7 +52,7 @@ export class SpadesService {
 
       if (action === 'player-bid') {
         this.players.update((players) =>
-          players.map((p) => (p.id === payload.playerId ? { ...p, bid: payload.bid } : p)),
+          players.map((p) => (p.socketId === payload.playerId ? { ...p, bid: payload.bid } : p)),
         );
       }
 
@@ -66,7 +66,7 @@ export class SpadesService {
         ]);
         this.players.update((players) =>
           players.map((p) =>
-            p.id === payload.playerId
+            p.socketId === payload.playerId
               ? { ...p, hand: p.hand.filter((c) => c !== payload.card) }
               : p,
           ),
@@ -82,7 +82,7 @@ export class SpadesService {
 
       if (this.players().length > 0) {
         // players already initialized, apply immediately
-        this.players.update((players) => players.map((p) => (p.id === myId ? { ...p, hand } : p)));
+        this.players.update((players) => players.map((p) => (p.socketId === myId ? { ...p, hand } : p)));
       } else {
         pendingHand = hand;
       }
@@ -94,7 +94,7 @@ export class SpadesService {
       if (players.length > 0 && pendingHand.length > 0) {
         const myId = this.gameSocket.socketId;
         this.players.update((p) =>
-          p.map((player) => (player.id === myId ? { ...player, hand: pendingHand } : player)),
+          p.map((player) => (player.socketId === myId ? { ...player, hand: pendingHand } : player)),
         );
         pendingHand = [];
       }
@@ -224,15 +224,15 @@ export class SpadesService {
     });
 
     this.players().forEach((player, i) => {
-      if (player.id === this.gameSocket.socketId) {
+      if (player.socketId === this.gameSocket.socketId) {
         // Store host locally
         this.players.update((players) =>
-          players.map((p) => (p.id === player.id ? { ...p, hand: hands[i] } : p)),
+          players.map((p) => (p.socketId === player.socketId ? { ...p, hand: hands[i] } : p)),
         );
       } else {
         // Send privately to each player
         this.gameSocket.socket.emit('deal-hand', {
-          targetPlayerId: player.id,
+          targetPlayerId: player.socketId,
           hand: hands[i],
         });
       }
@@ -242,7 +242,7 @@ export class SpadesService {
   setPlayerBid(bid: number): void {
     const myId = this.gameSocket.socketId;
     this.players.update((players) => players.map((p) => { 
-      return (p.id === myId ? { ...p, bid, showModal: false } : p)
+      return (p.socketId === myId ? { ...p, bid, showModal: false } : p)
     }));
 
     // Broadcast bid to other players
@@ -284,14 +284,14 @@ export class SpadesService {
       console.log("Players b4: ")
       console.log(this.players())
       this.players.update((players) =>
-        players.map((p) => (p.id === winner ? { ...p, handScore: p.handScore + 1 } : p)),
+        players.map((p) => (p.socketId === winner ? { ...p, handScore: p.handScore + 1 } : p)),
       );
       console.log("Players after: ")
       console.log(this.players())
 
       // set new rounds first player to the winner
       this.currentRoundsLeader.set(
-        this.players().indexOf(this.players().find((player) => player.id === winner)!),
+        this.players().indexOf(this.players().find((player) => player.socketId === winner)!),
       );
       this.currentPlayersTurn.set(this.currentRoundsLeader());
 
@@ -320,7 +320,7 @@ export class SpadesService {
     // Remove from players hand
     this.players.update((players) =>
       players.map((p) =>
-        p.id === playerId ? { ...p, hand: p.hand.filter((c) => c !== cardPlayed) } : p,
+        p.socketId === playerId ? { ...p, hand: p.hand.filter((c) => c !== cardPlayed) } : p,
       ),
     );
 

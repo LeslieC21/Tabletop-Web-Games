@@ -12,7 +12,8 @@ const io = new Server(server, {
     cors: {
         origin: "http://localhost:4200",
         methods: ["GET", "POST"],
-    },
+        credentials: true
+    }
 });
 
 // Store all active game rooms
@@ -48,18 +49,19 @@ app.get("/room/:code", (req, res) => {
 });
 
 io.on('connection', (socket) => {
-    console.log(`Player connected: ${socket.id}`);
+    // console.log(`Player connected: ${socket.id}`);
     socket.onAny((event, ...args) => {
-        console.log(`Received event: ${event}`, args);
+        // console.log(`Received event: ${event}`, args);
     });
 
     // CREATE ROOM
-    socket.on("create-room", ({ playerName }) => {
+    socket.on("create-room", ({ playerName, clientId }) => {
         const roomCode = generateRoomCode();
         rooms[roomCode] = {
             code: roomCode,
             players: [{
-                id: socket.id, 
+                clientId: clientId,
+                socketId: socket.id, 
                 name: playerName, 
                 isHost: true,
                 score: 0,
@@ -73,7 +75,7 @@ io.on('connection', (socket) => {
         socket.data.roomCode = roomCode;
         socket.data.playerName = playerName;
 
-        console.log(`Room created: ${roomCode} by ${playerName}`);
+        // console.log(`Room created: ${roomCode} by ${playerName}`);
 
         socket.emit("room-created", {
             roomCode, 
@@ -82,7 +84,7 @@ io.on('connection', (socket) => {
     });
 
     // JOIN ROOM
-    socket.on('join-room', ({ roomCode, playerName }) => {
+    socket.on('join-room', ({ roomCode, playerName, clientId }) => {
         const room = rooms[roomCode];
 
         if(!room) {
@@ -96,7 +98,8 @@ io.on('connection', (socket) => {
         }
 
         room.players.push({
-            id: socket.id,
+            clientId: clientId,
+            socketId: socket.id,
             name: playerName,
             isHost: false,
             score: 0,
@@ -119,10 +122,12 @@ io.on('connection', (socket) => {
         socket.to(roomCode).emit("player-joined", {
             players: room.players,
             newPlayer: {
-                id: socket.id,
+                socketId: socket.id,
                 name: playerName
             },
         });
+
+        console.log(room.players);
     });
 
     // START GAME (host only)
@@ -130,7 +135,7 @@ io.on('connection', (socket) => {
         const room = rooms[roomCode];
         if(!room) return;
 
-        const player = room.players.find((p) => p.id === socket.id);
+        const player = room.players.find((p) => p.socketId === socket.id);
         if(!player?.isHost) {
             socket.emit("error", { message: "Only the host can start the game."})
             return;
@@ -160,13 +165,13 @@ io.on('connection', (socket) => {
 
         // Give players their dealt hands
         socket.on('deal-hand', ({ targetPlayerId, hand }) => {
-            console.log("Player receieves " + hand);
+            // console.log("Player receieves " + hand);
             io.to(targetPlayerId).emit('deal-hand', { hand });
         });
 
         // SYNC GAME STATE
         socket.on("sync-state", ({ roomCode, gameState }) => {
-            console.log('sync-state received, broadcasting game-update to:', roomCode);
+            // console.log('sync-state received, broadcasting game-update to:', roomCode);
             const room = rooms[roomCode];
             if(!room) return;
 
@@ -175,7 +180,7 @@ io.on('connection', (socket) => {
                 ...gameState
             };
 
-            // Push updated state to everyone except sender
+            // Push updated state to everyone
             socket.to(roomCode).emit("game-update", {
                 action: 'state-update',
                 payload: gameState,
@@ -183,31 +188,43 @@ io.on('connection', (socket) => {
             });
         });
 
-        socket.on("disconnect", () => {
+        // Disconnect from GAME not socket
+        socket.on("leave-game", ( clientId ) => {
             const { roomCode, playerName } = socket.data;
-            if (!roomCode || !rooms[roomCode]) return;
 
+            // If room doesnt exist return
+            if (!roomCode || !rooms[roomCode])
+                return;
+            
+            // Grab room that had a disconnected player
             const room = rooms[roomCode];
+            
+            // Grab list of players that are still in the game & player that left
+            room.players = room.players.filter((p) => p.socketId !== socket.id);
+            const socketIds = room.players.map((p) => p.socketId);
 
-            // Remove player from room
-            room.players = room.players.filter((p) => p.id !== socket.id)
-            console.log(`${playerName} left room: ${roomCode}`);
+            console.log(room.players);
 
+            // If there are no players left - delete the room
             if(room.players.length === 0) {
-                // Clean up empty room
                 delete rooms[roomCode];
                 console.log(`Room ${roomCode} deleted (empty)`)
-            } else {
-                // If host left, assign a new host
+            } else {    
+                // If there is now no host in the room
                 if(!room.players.find((p) => p.isHost)) {
-                    room.players[0].isHost = true;
+                    console.log("Host has left. Closing Room");
+                    io.to(roomCode).emit("host-left", {
+                        hostLeft: clientId,
+                        gameState: { started: false },
+                    })
+                    delete rooms[roomCode];
+                } else {
+                    // Notify remaining players that host left
+                    io.to(socketIds).emit("player-left", {
+                        players: room.players,
+                        playerName
+                    });
                 }
-
-                // Notify remaining players
-                io.to(roomCode).emit("player-left", {
-                    players: room.players,
-                    playerName,
-                });
             }
         });
     });

@@ -1,4 +1,4 @@
-import { Injectable, OnDestroy, NgZone } from "@angular/core";
+import { Injectable, OnDestroy, NgZone, HostListener } from "@angular/core";
 import { io, Socket } from 'socket.io-client'
 import { BehaviorSubject, Subject } from "rxjs";
 
@@ -40,6 +40,11 @@ export interface PlayerLeftPayload {
     playerName: string;
 }
 
+export interface HostLeftPayload {
+    hostLeft: { clientId: string };
+    gameState: GameState;
+}
+
 export interface GameUpdatePayload {
     action: string;
     payload: any;
@@ -59,12 +64,22 @@ export interface ErrorPayload {
 export class GameSocketService implements OnDestroy{
     public socket!: Socket;
     private readonly SERVER_URL = 'http://localhost:3000';
+    // private readonly SERVER_URL = 'http://127.0.0.1:3000';
+
+
+    @HostListener('window:beforeunload', ['$event'])
+    unloadHandler(event: Event) {
+        if (this.socket) {
+            this.socket.disconnect();
+        }
+    }
 
     // Public state streams
     players$ = new BehaviorSubject<PlayerModel[]>([]);
     gameState$ = new BehaviorSubject<GameState>({ started: false });
     roomCode$ = new BehaviorSubject<string | null>(null);
     connected$ = new BehaviorSubject<boolean>(false);
+    hostLeft$ = new BehaviorSubject<string | null>(null);
     myHand$ = new BehaviorSubject<Card[]>([]);
     error$ = new Subject<string>();
 
@@ -83,7 +98,10 @@ export class GameSocketService implements OnDestroy{
 
         this.socket = io(this.SERVER_URL, {
             transports: ['websocket', 'polling'],
-            autoConnect: true
+            withCredentials: true,
+            autoConnect: true,
+            forceNew: true,
+            multiplex: false
         });
 
             this.socket.on('connect', () => {
@@ -104,13 +122,15 @@ export class GameSocketService implements OnDestroy{
     }
 
     // Room Actions
-    createRoom(playerName: string): void {
-        this.socket.emit('create-room', { playerName });
+    createRoom(playerName: string, clientId: string): void {
+        this.socket.emit('create-room', { playerName, clientId });
     }
 
-    joinRoom(roomCode: string, playerName: string): void {
+    joinRoom(roomCode: string, playerName: string, clientId: string): void {
         this.socket.emit('join-room', {
-            roomCode: roomCode.toUpperCase(), playerName
+            roomCode: roomCode.toUpperCase(), 
+            playerName,
+            clientId
         });
     }
 
@@ -118,8 +138,8 @@ export class GameSocketService implements OnDestroy{
         this.socket.emit('start-game', { roomCode })
     }
 
-    leaveGame(roomCode: string): void {
-        this.socket.emit('end-game', { roomCode })
+    leaveGame(clientId: string): void {
+        this.socket.emit('leave-game', { clientId })
     }
 
     // Game Actions
@@ -151,7 +171,7 @@ export class GameSocketService implements OnDestroy{
     }
 
     isHost(players: PlayerModel[]): boolean {
-        return players.find(p => p.id === this.socketId)?.isHost ?? false;
+        return players.find(p => p.socketId === this.socketId)?.isHost ?? false;
     }
 
     // Private: register all server events
@@ -162,6 +182,15 @@ export class GameSocketService implements OnDestroy{
                 this.players$.next(data.players);
                 this.roomCreated$.next(data);
             });
+        })
+
+        this.socket.on('host-left', ( data: HostLeftPayload) => {
+            console.log("Host Left");
+            this.ngZone.run(() => {
+                this.hostLeft$.next(data.hostLeft.clientId);
+                console.log(data.hostLeft);
+                this.gameState$.next(data.gameState);
+            })
         })
 
         this.socket.on('room-joined', ( data: RoomJoinedPayload) => {
@@ -178,6 +207,7 @@ export class GameSocketService implements OnDestroy{
                 this.players$.next(data.players);
                 this.playerJoined$.next(data);
             });
+            console.log(this.players$);
         });
 
         this.socket.on('player-left', (data: PlayerLeftPayload) => {

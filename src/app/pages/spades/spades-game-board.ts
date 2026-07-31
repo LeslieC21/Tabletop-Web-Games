@@ -29,7 +29,7 @@ export class SpadesGameBoard {
   }
 
   get myPlayerIndex(): number {
-    return this.SpadesService.players().findIndex((p) => p.id === this.myId);
+    return this.SpadesService.players().findIndex((p) => p.socketId === this.myId);
   }
 
   get isMyTurn(): boolean {
@@ -37,11 +37,11 @@ export class SpadesGameBoard {
   }
 
   get myHand(): Card[] {
-    return this.SpadesService.players().find((p) => p.id === this.myId)?.hand ?? [];
+    return this.SpadesService.players().find((p) => p.socketId === this.myId)?.hand ?? [];
   }
 
   get myPlayer() {
-    return this.SpadesService.players().find((p) => p.id === this.myId);
+    return this.SpadesService.players().find((p) => p.socketId === this.myId);
   }
 
   getTeamBid(): number {

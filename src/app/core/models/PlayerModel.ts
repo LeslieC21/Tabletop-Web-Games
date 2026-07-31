@@ -1,7 +1,8 @@
 import { Card  } from "../constants/deck";
 
 export interface PlayerModel {
-    id: string;
+    clientId: string;
+    socketId: string;
     name: string;
     isHost: boolean;
     hand: Card[];

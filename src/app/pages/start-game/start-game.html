@@ -1,6 +1,6 @@
 @if(!gameStarted()) {
 <div class="container">
-    <button [routerLink]="['/']" class="quit">Quit</button>
+    <button class="quit" (click)="routeToHome()">Quit</button>
     <div class="card-container">
         <section class="card-suit-top">
             <h1>1</h1>
@@ -55,7 +55,7 @@
                                         @if(p.isHost) {
                                             <span> (Host) </span>
                                         }
-                                        @if(p.id === myId){
+                                        @if(p.socketId === myId){
                                             <span> (You) </span>
                                         }
                                         {{ p.name }}</li> 
@@ -102,7 +102,7 @@
 
 @if((gameStarted())) {
     <div class="game-area">
-            <app-spades-game-board (closeGame)="endGame()"/>
+            <app-spades-game-board (closeGame)="leaveRoom()"/>
     </div>
 }
 
@@ -118,6 +118,19 @@
         </div>
         <div class="modal-buttons">
             <button class="modal-exit-button" (click)="showInstructions.set(false)">Ok</button>
+        </div>
+    </div>
+</div>
+}
+
+@if(showHostLeft() !== null && showHostLeft() !== clientId) {
+    <div class="modal">
+    <div class="modal-container">
+        <div class="modal-title">
+            <h1>The Host has left the game</h1>
+        </div>
+        <div class="modal-buttons">
+            <button class="modal-exit-button" (click)="closeHostLeftModal()">Ok</button>
         </div>
     </div>
 </div>

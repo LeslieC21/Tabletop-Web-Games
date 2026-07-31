@@ -1,3 +1,63 @@
+// Deck creation & dealing
+const suits = [
+    { name: 'Hearts', imageUrl: '/Hearts.png'},
+    { name: 'Diamonds', imageUrl: '/Diamonds.png'}, 
+    { name: 'Clubs', imageUrl: '/Clubs.png'}, 
+    { name: 'Spades', imageUrl: '/Spades.png'},
+];
+
+const Ranks = {
+    2: "2", 3: "3", 4: "4", 5: "5", 6: "6", 7: "7",
+    8: "8", 9: "9", 10: "10",
+    11: "J", 12: "Q", 13: "K", 14: "A",
+};
+
+function createDeck() {
+    const deck = [];
+    for (const suit of suits) {
+        for(let value = 2; value <= 14; value++) {
+            deck.push({
+                suit,
+                value,
+                rank: Ranks[value]
+            });
+        }
+    }
+
+    return deck;
+}
+
+function shuffleDeck(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]]
+    }
+
+    return a;
+}
+
+function dealDeck(players) {
+    const deck = shuffleDeck(createDeck());
+    const CardsPerPlayer = deck.length / players.length;
+
+    players.forEach((player, i) => {
+        player.hand = deck.slice(i * CardsPerPlayer, (i + 1) * CardsPerPlayer);
+    });
+}
+
+// Strip other players hands out before sending 
+function sanitizeGameStateFor(gameState, forPlayerId) {
+    return {
+        ...gameState,
+        players: (gameState.players).map((p) => ({
+            ...p,
+            hand: p.clientId === forPlayerId ? p.hand : undefined,
+            handSize: p.hand.length
+        }))
+    };
+}
+
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -64,7 +124,8 @@ io.on('connection', (socket) => {
                 socketId: socket.id, 
                 name: playerName, 
                 isHost: true,
-                score: 0,
+                totalScore: 0,
+                handScore: 0,
                 hand: [],
                 bid: 0
             }],
@@ -102,7 +163,8 @@ io.on('connection', (socket) => {
             socketId: socket.id,
             name: playerName,
             isHost: false,
-            score: 0,
+            totalScore: 0,
+            handScore: 0,
             hand: [],
             bid: 0,
         });
@@ -126,8 +188,6 @@ io.on('connection', (socket) => {
                 name: playerName
             },
         });
-
-        console.log(room.players);
     });
 
     // START GAME (host only)
@@ -141,11 +201,18 @@ io.on('connection', (socket) => {
             return;
         }
 
+        // Deal hands to the players
+        dealDeck(room.players);
+        room.gameState.players = room.players;
         room.gameState.started = true;
+        room.gameState.phase = "bidding";
 
         // Broadcast game starting to everyone in the room
-        io.to(roomCode).emit("game-started", {
-            gameState: room.gameState
+        room.players.forEach((player) => {
+            io.to(player.socketId).emit("hand-dealt", {
+                hand: player.hand,
+                gameState: sanitizeGameStateFor(room.gameState, player.id)
+            })
         });
     });
 

@@ -90,9 +90,9 @@ export class StartGame {
 
     this.subs.add(
       this.gameSocket.gameState$.subscribe((state) => { 
-        // console.log('gameState$ received:', state);
+        console.log("Game State Recieved!");
         this.gameStarted.set(state.started);
-        this.cdr.markForCheck();
+        // this.cdr.markForCheck();
       })
     );
 

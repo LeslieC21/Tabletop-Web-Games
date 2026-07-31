@@ -13,7 +13,33 @@ import { Card } from "../constants/deck";
  
 export interface GameState {
   started: boolean;
-  [key: string]: any;
+  phase: "waiting" | "bidding" | "playing" | "hand-complete" | "game-over";
+  players: PlayerModel[];
+  dealerIndex: number,          // whose turn it is to deal — rotates each hand
+  currentTurnIndex: number,     // index into players[] — whose turn to bid/play
+  currentTrick: [],             // cards played so far this trick: [{ playerId, card }]
+  tricksPlayed: number,         // how many tricks completed this hand (0–13)
+  spadesBroken: boolean,        // has a spade been played yet this hand
+  roundNumber: number           // which hand of the overall game this is
+}
+
+export function createDefaultGameState(): GameState {
+    return {
+        started: false,
+        phase: "waiting",
+        players: [],
+        dealerIndex: 0,
+        currentTurnIndex: 0,
+        currentTrick: [],
+        tricksPlayed: 0,
+        spadesBroken: false,
+        roundNumber: 1,
+    }
+}
+
+export interface HandDealtPayload {
+    hand: Card[];
+    gameState: GameState;
 }
 
 export interface RoomCreatedPayload {
@@ -64,8 +90,6 @@ export interface ErrorPayload {
 export class GameSocketService implements OnDestroy{
     public socket!: Socket;
     private readonly SERVER_URL = 'http://localhost:3000';
-    // private readonly SERVER_URL = 'http://127.0.0.1:3000';
-
 
     @HostListener('window:beforeunload', ['$event'])
     unloadHandler(event: Event) {
@@ -76,7 +100,7 @@ export class GameSocketService implements OnDestroy{
 
     // Public state streams
     players$ = new BehaviorSubject<PlayerModel[]>([]);
-    gameState$ = new BehaviorSubject<GameState>({ started: false });
+    gameState$ = new BehaviorSubject<GameState>(createDefaultGameState());
     roomCode$ = new BehaviorSubject<string | null>(null);
     connected$ = new BehaviorSubject<boolean>(false);
     hostLeft$ = new BehaviorSubject<string | null>(null);
@@ -217,8 +241,7 @@ export class GameSocketService implements OnDestroy{
             });
         });
 
-        this.socket.on('game-started', ({ gameState }: { gameState: GameState}) => {
-            console.log('game-started received in service:', gameState);
+        this.socket.on('hand-dealt', ({ gameState, hand }: HandDealtPayload) => {
             this.ngZone.run(() => {
                 this.gameState$.next(gameState);
             });

@@ -9,41 +9,41 @@
             </div>
         </div>
     <h1 class="player-titles">Player1</h1>
-    @if(!isMyTurn) {<h1 style="color: red;">&uarr;</h1>}
+    <!-- @if(!isMyTurn) {<h1 style="color: red;">&uarr;</h1>} -->
     </section>
     <main>
-        @for(card of SpadesService.potCards; track $index) {
+        <!-- @for(card of SpadesService.potCards; track $index) {
             <app-cards [card]="card"/>
-        }
+        } -->
     </main>
     <section class="player">
-        @if(isMyTurn) {<h1 style="color: red;">&darr;</h1>}
+        @if(SpadesService.currentGameState().currentTurnIndex) {<h1 style="color: red;">&darr;</h1>}
         <h1 class="player-titles">You</h1>
-        <h3>Team Bid: {{getTeamBid()}}</h3>
-        <h3>Your Score: {{myPlayer?.score}} Hand Score: {{myPlayer?.handScore}}</h3>
+        <!-- <h3>Team Bid: {{getTeamBid()}}</h3> -->
+        <!-- <h3>Your Score: {{myPlayer?.score}} Hand Score: {{myPlayer?.handScore}}</h3> -->
         <div class="card-scroll-wrapper">
             <div class="player-cards">
-                @for(card of myHand; track $index) {
+                <!-- @for(card of myHand; track $index) {
                     <app-cards
                         class="card" 
                         [class.selectedCard]="isSelected(card)"
                         [card]="card" 
                         (click)="selectCard($event, card)"
                     />
-                }
+                } -->
             </div>
         </div>
         <div class="player-buttons">
-            <button (click)="playCard()" [disabled]="!isMyTurn || !submittedBid">Play Card</button>
+            <!-- <button (click)="playCard()" [disabled]="!isMyTurn || !submittedBid">Play Card</button> -->
         </div>
     </section>
-    @if(!submittedBid()) {
+    <!-- @if(!submittedBid()) {
     <button class="showModal-button" (click)="this.showBidModal.update(oldVal => !oldVal)">&#9634;</button>
-    }
+    } -->
 </div>
 
 <!-- Modal -->
-    @if(showBidModal()) {
+    <!-- @if(showBidModal()) {
     <div class="modal-background">
         <div class="modal-container">
             <header>
@@ -59,4 +59,4 @@
             </footer>
         </div>
     </div>
-    }
+    } -->

@@ -90,6 +90,7 @@ footer {
 }
 
 main {
+    display: flex;
     margin-top: 2rem;
 }
 

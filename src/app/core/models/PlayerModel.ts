@@ -5,7 +5,7 @@ export interface PlayerModel {
     socketId: string;
     name: string;
     isHost: boolean;
-    hand?: Card[];
+    hand: Card[];
     handSize: number;
     bid: number;
     tricksWon: number;

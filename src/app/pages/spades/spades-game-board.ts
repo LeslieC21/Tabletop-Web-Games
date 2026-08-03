@@ -1,114 +1,76 @@
-import { Component, effect, inject, signal, Output, EventEmitter } from '@angular/core';
+import { Component, effect, inject, signal, Output, EventEmitter, computed, Input, NgZone } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 
 import { Cards } from '../../components/cards/cards';
-import { SpadesService } from '../../core/GameServices/spades';
+// import { SpadesService } from '../../core/GameServices/spades';
+import { GameState, createDefaultGameState } from '../../core/ConnectionServices/GameSocketService';
 import { GameSocketService } from '../../core/ConnectionServices/GameSocketService';
 import { Card } from '../../core/constants/deck';
 import { reset } from 'canvas-confetti';
 
 @Component({
   selector: 'app-spades-game-board',
-  imports: [RouterLink, Cards, FormsModule],
+  imports: [Cards, FormsModule],
   templateUrl: './spades-game-board.html',
   styleUrl: './spades-game-board.css',
 })
 export class SpadesGameBoard {
+  @Input ({ required: true }) roomCode!: string;
   @Output() closeGame = new EventEmitter<void>();
-  // SpadesService = inject(SpadesService);
-  // gameSocket = inject(GameSocketService);
 
-  // selectedCard = signal<Card | null>(null);
-  // showBidModal = signal<boolean>(false);
-  // submittedBid = signal<boolean>(false);
-  // playerBid = 0;
+  currentGameState = signal<GameState>(createDefaultGameState());
+    currentTurnId = computed(() => {
+      let s = this.currentGameState().currentTurnIndex;
+      return this.currentGameState().players.at(s)?.clientId;
+    })
+    myPlayer = computed(() => {
+      let s =  this.gameSocket.getClientId();
+      return this.currentGameState().players.find(p => p.clientId == s);
+    })
+    myHand = computed(() => {
+      return this.myPlayer()!.hand;
+    });
 
-  // get myId(): string {
-  //   return this.gameSocket.socketId;
-  // }
+    selectedCard = signal<Card | null>(null);
+  
+    constructor(private gameSocket: GameSocketService) {
+      this.gameSocket.gameState$.subscribe((state) => {
+        console.log("Game State Updated to: ");
+        console.log(state);
+        this.currentGameState.update(s => ({ ...state }));
+      });
+    }
 
-  // get myPlayerIndex(): number {
-  //   return this.SpadesService.players().findIndex((p) => p.socketId === this.myId);
-  // }
-
-  // get isMyTurn(): boolean {
-  //   // return this.SpadesService.currentPlayersTurn() === this.myPlayerIndex;
-  // }
-
-  // get myHand(): Card[] {
-  //   return this.SpadesService.players().find((p) => p.socketId === this.myId)?.hand ?? [];
-  // }
-
-  // get myPlayer() {
-  //   return this.SpadesService.players().find((p) => p.socketId === this.myId);
-  // }
-
-  // getTeamBid(): number {
-  //   return (
-  //     this.SpadesService.teamBids().at(
-  //       this.gameSocket.players$.value.indexOf(this.myPlayer!) % 2,
-  //     ) ?? 0
-  //   );
-  // }
-
-  // constructor() {
-  //   effect(() => {
-  //     const round = this.SpadesService.gameRounds();
-
-  //     if (round === 0 && this.isMyTurn) {
-  //       this.submittedBid.set(false);
-  //       setTimeout(() => {
-  //         // Prompt the user to select their bid!
-  //         this.showBidModal.set(this.myPlayer?.showModal!);
-  //         this.submittedBid.set(true);
-  //       }, 5000);
-  //     }
-
-  //     // CAUSES INFINITE LOOP AFTER LEAVING GAME AND 'REJOINING'
-  //     if (this.myHand.length === 0 && this.SpadesService.hasDelt)
-  //       this.SpadesService.calculateScores();
-  //   });
-  // }
+    get myId(): string {
+      return this.gameSocket.getClientId();
+    }
 
   leaveGame() {
-    // this.SpadesService.resetGame();
     this.closeGame.emit();
   }
 
-  // ngOnInit() {
-  //   if (this.gameSocket.isHost(this.gameSocket.players$.value)) {
-  //     this.SpadesService.initPlayers();
-  //     this.SpadesService.dealDeck();
-  //     this.SpadesService.syncPublicState();
-  //   }
-  // }
+  setPlayerBid() {
+    const playerBid = (document.getElementById('playerBid') as HTMLInputElement).value;
 
-  // restartGame() {
-  //   this.SpadesService.resetGame();
-  // }
+    // Send value of the bid to the server
+    this.gameSocket.sendAction(this.roomCode, 'submit-playerBid', { bid: playerBid });
+  }
 
-  // setPlayerBid() {
-  //   this.showBidModal.set(false);
-  //   this.submittedBid.set(true);
-  //   this.SpadesService.setPlayerBid(this.playerBid);
-  // }
+  selectCard(event: Event, card: Card) {
+    this.selectedCard.set(card);
+    console.log(this.selectedCard())
+  }
 
-  // selectCard(event: Event, card: Card) {
-  //   event.preventDefault();
-  //   this.selectedCard.set(card);
-  // }
+  isSelected(card: Card): boolean {
+    const selected = this.selectedCard();
+    if(!selected)
+      return false;
 
-  // isSelected(card: Card): boolean {
-  //   const selected = this.selectedCard();
-  //   if (!selected) return false;
-  //   return selected.rank === card.rank && selected.suit.name === card.suit.name;
-  // }
+    return selected.rank === card.rank && selected.suit.name === card.suit.name;
+  }
 
-  // playCard() {
-  //   if (!this.selectedCard() || !this.isMyTurn) return;
-
-  //   this.SpadesService.playCard(this.selectedCard()!, this.myId);
-  //   this.selectedCard.set(null);
-  // }
+  playCard() {
+    this.gameSocket.sendAction(this.roomCode, 'play-card', { card: this.selectedCard() })
+  }
 }

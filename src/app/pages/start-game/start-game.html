@@ -102,7 +102,7 @@
 
 @if((gameStarted())) {
     <div class="game-area">
-            <app-spades-game-board (closeGame)="leaveRoom()"/>
+            <app-spades-game-board (closeGame)="leaveRoom()" [roomCode]="roomCode ?? joinCode"/>
     </div>
 }
 

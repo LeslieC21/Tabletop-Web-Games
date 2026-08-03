@@ -109,11 +109,6 @@ app.get("/room/:code", (req, res) => {
 });
 
 io.on('connection', (socket) => {
-    // console.log(`Player connected: ${socket.id}`);
-    socket.onAny((event, ...args) => {
-        // console.log(`Received event: ${event}`, args);
-    });
-
     // CREATE ROOM
     socket.on("create-room", ({ playerName, clientId }) => {
         const roomCode = generateRoomCode();
@@ -127,14 +122,24 @@ io.on('connection', (socket) => {
                 totalScore: 0,
                 handScore: 0,
                 hand: [],
-                bid: 0
+                bid: -1
             }],
-            gameState: { started: false },
+            gameState: { 
+                started: false,
+                phase: "waiting",
+                players: [],
+                dealerIndex: 0,
+                currentTurnIndex: 0,
+                currentTrick: [],
+                tricksPlayed: 0,
+                spadesBroken: false,
+                roundNumber: 1
+            },
         };
 
         socket.join(roomCode);
         socket.data.roomCode = roomCode;
-        socket.data.playerName = playerName;
+        socket.data.clientId = clientId;
 
         // console.log(`Room created: ${roomCode} by ${playerName}`);
 
@@ -166,12 +171,12 @@ io.on('connection', (socket) => {
             totalScore: 0,
             handScore: 0,
             hand: [],
-            bid: 0,
+            bid: -1,
         });
 
         socket.join(roomCode);
         socket.data.roomCode = roomCode;
-        socket.data.playerName = playerName;
+        socket.data.clientId = clientId;
 
         // Tell the joining player the current state
         socket.emit("room-joined", {
@@ -206,97 +211,210 @@ io.on('connection', (socket) => {
         room.gameState.players = room.players;
         room.gameState.started = true;
         room.gameState.phase = "bidding";
+        room.gameState.currentTurnIndex = 0;
 
         // Broadcast game starting to everyone in the room
         room.players.forEach((player) => {
             io.to(player.socketId).emit("hand-dealt", {
                 hand: player.hand,
-                gameState: sanitizeGameStateFor(room.gameState, player.id)
+                // gameState: room.gameState
+                gameState: sanitizeGameStateFor(room.gameState, player.clientId)
             })
         });
     });
 
+
+
     // GAME ACTION (any player)
-    socket.on('game-action', ({ roomCode, action, payload }) => {
+    socket.on('game-action', ({ roomCode, action, clientId, payload }) => {
         const room = rooms[roomCode];
         if(!room) return;
+        
+        let playerToMutate = room.players.find(p => p.clientId === clientId);
 
+        switch(action) {
+            case "submit-playerBid":
+                // Payload only has the bid
+                playerToMutate.bid = payload.bid;
+                endTurn(room);
+                sendGameUpdateToPlayers(room);
+            break;
+            case "play-card":
+                // Payload only has the card played
+                // Move card from player hand to currentTrick
+                if(!room.gameState.spadesBroken && payload.card.suit.name === "Spades")
+                    room.gameState.spadesBroken = true;
+                const playedCardIndex = playerToMutate.hand.findIndex(card => 
+                    card.rank === payload.card.rank && 
+                    card.suit.name === payload.card.suit.name
+                );
 
-        // Update game state (game specific logic)
-        socket.to(roomCode).emit("game-update", {
-            action,
-            payload,
-            from: socket.data.playerName,
-            });
-        });
-
-        // Give players their dealt hands
-        socket.on('deal-hand', ({ targetPlayerId, hand }) => {
-            // console.log("Player receieves " + hand);
-            io.to(targetPlayerId).emit('deal-hand', { hand });
-        });
-
-        // SYNC GAME STATE
-        socket.on("sync-state", ({ roomCode, gameState }) => {
-            // console.log('sync-state received, broadcasting game-update to:', roomCode);
-            const room = rooms[roomCode];
-            if(!room) return;
-
-            room.gameState = {
-                ...room.gameState, 
-                ...gameState
-            };
-
-            // Push updated state to everyone
-            socket.to(roomCode).emit("game-update", {
-                action: 'state-update',
-                payload: gameState,
-                from: socket.data.playerName
-            });
-        });
-
-        // Disconnect from GAME not socket
-        socket.on("leave-game", ( clientId ) => {
-            const { roomCode, playerName } = socket.data;
-
-            // If room doesnt exist return
-            if (!roomCode || !rooms[roomCode])
-                return;
-            
-            // Grab room that had a disconnected player
-            const room = rooms[roomCode];
-            
-            // Grab list of players that are still in the game & player that left
-            room.players = room.players.filter((p) => p.socketId !== socket.id);
-            const socketIds = room.players.map((p) => p.socketId);
-
-            console.log(room.players);
-
-            // If there are no players left - delete the room
-            if(room.players.length === 0) {
-                delete rooms[roomCode];
-                console.log(`Room ${roomCode} deleted (empty)`)
-            } else {    
-                // If there is now no host in the room
-                if(!room.players.find((p) => p.isHost)) {
-                    console.log("Host has left. Closing Room");
-                    io.to(roomCode).emit("host-left", {
-                        hostLeft: clientId,
-                        gameState: { started: false },
-                    })
-                    delete rooms[roomCode];
-                } else {
-                    // Notify remaining players that host left
-                    io.to(socketIds).emit("player-left", {
-                        players: room.players,
-                        playerName
-                    });
-                }
-            }
-        });
+                let addTrick = { card: payload.card, cardOwner: playerToMutate.clientId }
+                room.gameState.currentTrick.push(addTrick);
+                playerToMutate.hand.splice(playedCardIndex, 1);
+                room.gameState.players.map((player) => ({
+                    ...player,
+                    player: player.clientId == playerToMutate.clientId ? playerToMutate : player
+                }))
+                endTurn(room);
+                sendGameUpdateToPlayers(room);
+            break;
+        }
     });
 
-    const PORT = process.env.PORT || 3000;
-    server.listen(PORT, () => {
-        console.log(`Game server running on http://localhost:${PORT}`);
+
+
+    // Disconnect from GAME not socket
+    socket.on("leave-game", ( clientId ) => {
+        const { roomCode, playerName } = socket.data;
+
+        // If room doesnt exist return
+        if (!roomCode || !rooms[roomCode])
+            return;
+            
+        // Grab room that had a disconnected player
+        const room = rooms[roomCode];
+            
+        // Grab list of players that are still in the game & player that left
+        room.players = room.players.filter((p) => p.socketId !== socket.id);
+        const socketIds = room.players.map((p) => p.socketId);
+
+        // If there are no players left - delete the room
+        if(room.players.length === 0) {
+            delete rooms[roomCode];
+        } else {    
+            // If there is now no host in the room
+            if(!room.players.find((p) => p.isHost)) {
+                io.to(roomCode).emit("host-left", {
+                    hostLeft: clientId,
+                    gameState: { started: false },
+                })
+                delete rooms[roomCode];
+            } else {
+                // Notify remaining players that host left
+                io.to(socketIds).emit("player-left", {
+                    players: room.players,
+                    playerName
+                });
+            }
+        }
+    });
+});
+
+
+// HELPER FUNCTIONS 
+function sendGameUpdateToPlayers(room) {
+    room.players.forEach((player) => {
+        io.to(player.socketId).emit("game-update", {
+            gameState: sanitizeGameStateFor(room.gameState, player.clientId)
+        })
     })
+}
+
+function endTurn(room) {
+    let s = room.gameState.currentTurnIndex + 1;
+    room.gameState.currentTurnIndex = s % room.gameState.players.length;
+
+    if(room.gameState.currentTurnIndex === room.gameState.dealerIndex) {
+        switch(room.gameState.phase) {
+            case "bidding":
+                room.gameState.phase = "playing";
+            break;
+            case "playing":
+                // Determine trick winner - Always happen
+                // If a spade is played it wins
+                // No spade is played - so highest card that matches the suit wins
+                // Assume the first player to throw won the trick unless proven otherwise
+                let highestSuitPlayed = room.gameState.currentTrick[0].card.suit.name;
+                let highestCard = room.gameState.currentTrick[0].card.value;
+                room.gameState.currentTrick.forEach(trick => {
+                    if(trick.card.suit.name === "Spades" && highestSuitPlayed !== "Spades") {
+                        highestSuitPlayed = trick.card.suit.name;
+                        highestCard = trick.card.value;
+                    } 
+                    else if(trick.card.suit.name === "Spades" && highestSuitPlayed === "Spades") { 
+                        highestCard = Math.max(trick.card.value, highestCard); 
+                    }
+                    else if(trick.card.suit.name === highestSuitPlayed) {
+                        highestCard = Math.max(trick.card.value, highestCard); 
+                    }
+                });
+
+                let winnerIndex = room.gameState.currentTrick.findIndex(p => p.card.suit.name === highestSuitPlayed && p.card.value == highestCard);
+
+                // 1. Give winner the point (tricksWon)
+                room.gameState.players[winnerIndex].tricksWon += 1;
+                // 2. Empty currentTrick
+                room.gameState.currentTrick.length = 0;
+                // 3. Winner becomes new dealer
+                room.gameState.dealerIndex = winnerIndex;
+                room.gameState.currentTurnIndex = winnerIndex;
+                // 4. Increase tricksPlayed
+                room.gameState.tricksPlayed += 1;
+                // 5. Increase roundNumber
+                room.gameState.roundNumber += 1;
+                // Determine hand winner - Sometimes happen
+            break;
+            case "hand-complete":
+
+            break;
+            case "game-over":
+                
+            break;
+        }
+    }
+
+    if(room.gameState.phase === "playing" && room.players.at(-1).handSize != 0) {
+        determineCardValidity(room);
+    }
+}
+
+function determineCardValidity(room) {
+    // Determine if each card is valid for player based on cards thrown
+    // check if spades has been broken as well
+    let currentPlayer = room.players[room.gameState.currentTurnIndex];
+
+    currentPlayer.hand.forEach(card => {
+        // Only check what is valid
+        switch(room.gameState.spadesBroken) {
+            case true:
+                if(room.gameState.currentTrick.length === 0)
+                    return true;
+                else if(card.suit.name === "Spades")
+                    card.valid = true;
+                else if(card.suit.name === room.gameState.currentTrick[0].card.suit.name)
+                    card.valid = true;
+                else 
+                    card.valid = false;
+            break;
+            case false:
+                if(room.gameState.currentTrick.length === 0 && card.suit.name === "Spades")
+                    card.valid = false;
+                else if(room.gameState.currentTrick.length === 0)
+                    card.valid = true;
+                if(room.gameState.currentTrick.length !== 0 && card.suit.name === room.gameState.currentTrick[0].card.suit.name)
+                    return true;
+                else 
+                    card.valid = false;
+            break;
+        }
+    })
+
+    // Check if there is atleast one card that is valid
+    const hasValidCards = currentPlayer.hand.some(card => card.valid === true);
+    if(!hasValidCards) {
+        if(!room.gameState.spadesBroken) {
+            room.gameState.spadesBroken = true;
+                        
+            // Set every card in hand to valid
+            currentPlayer.hand.forEach(card => {
+                card.valid = true;
+            })
+        }
+    }
+}
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Game server running on http://localhost:${PORT}`);
+})

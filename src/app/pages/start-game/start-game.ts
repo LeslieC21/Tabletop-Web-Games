@@ -46,7 +46,8 @@ export class StartGame {
     this.gameTitle = this.route.snapshot.paramMap.get('game')! as Game;
     this.instructions = (GAME_RULES[this.gameTitle]).instructions;
     this.allowMultiplePlayers = (GAME_RULES[this.gameTitle]).allowMultiplayer;
-    this.clientId = store.getClientId();
+    
+    // this.clientId = store.getClientId();
   }
 
   ngOnInit(): void {
@@ -90,9 +91,7 @@ export class StartGame {
 
     this.subs.add(
       this.gameSocket.gameState$.subscribe((state) => { 
-        console.log("Game State Recieved!");
         this.gameStarted.set(state.started);
-        // this.cdr.markForCheck();
       })
     );
 
@@ -123,11 +122,11 @@ export class StartGame {
   }
 
   createRoom(): void {
-    this.gameSocket.createRoom(this.playerName, this.clientId);
+    this.gameSocket.createRoom(this.playerName);
   }
 
   joinRoom(): void {
-    this.gameSocket.joinRoom(this.joinCode, this.playerName, this.clientId);
+    this.gameSocket.joinRoom(this.joinCode, this.playerName);
   }
 
   startGame(): void {

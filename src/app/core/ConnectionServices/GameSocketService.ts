@@ -4,12 +4,6 @@ import { BehaviorSubject, Subject } from "rxjs";
 
 import { PlayerModel } from "../models/PlayerModel";
 import { Card } from "../constants/deck";
-
-// export interface Player {
-//   id: string;
-//   name: string;
-//   isHost: boolean;
-// }
  
 export interface GameState {
   started: boolean;
@@ -17,7 +11,7 @@ export interface GameState {
   players: PlayerModel[];
   dealerIndex: number,          // whose turn it is to deal — rotates each hand
   currentTurnIndex: number,     // index into players[] — whose turn to bid/play
-  currentTrick: [],             // cards played so far this trick: [{ playerId, card }]
+  currentTrick: Trick[],             // cards played so far this trick: [{ playerId, card }]
   tricksPlayed: number,         // how many tricks completed this hand (0–13)
   spadesBroken: boolean,        // has a spade been played yet this hand
   roundNumber: number           // which hand of the overall game this is
@@ -35,6 +29,11 @@ export function createDefaultGameState(): GameState {
         spadesBroken: false,
         roundNumber: 1,
     }
+}
+
+export interface Trick {
+    card: Card;
+    playerToMutate: string;
 }
 
 export interface HandDealtPayload {
@@ -73,12 +72,8 @@ export interface HostLeftPayload {
 
 export interface GameUpdatePayload {
     action: string;
-    payload: any;
-    from: string;
-}
-
-export interface StateSyncedPayload {
     gameState: GameState;
+    from: string;
 }
 
 export interface ErrorPayload {
@@ -113,9 +108,22 @@ export class GameSocketService implements OnDestroy{
     playerJoined$ = new Subject<PlayerJoinedPayload>();
     playerLeft$ = new Subject<PlayerLeftPayload>();
     gameUpdate$ = new Subject<GameUpdatePayload>();
-    stateSynced$ = new Subject<StateSyncedPayload>();
 
-    constructor(private ngZone: NgZone) {}
+    protected readonly clientId: string;
+    constructor(private ngZone: NgZone) {
+        const existingId = localStorage.getItem("clientId")
+        if(existingId) {
+            this.clientId = existingId;
+        } else {
+            this.clientId = crypto.randomUUID();
+            localStorage.setItem("clientId", this.clientId);
+        }
+        console.log("Client ID " + this.clientId);
+    }
+
+    getClientId(): string {
+        return this.clientId;
+    }
 
     connect(): void {
         if (this.socket) return;
@@ -146,11 +154,13 @@ export class GameSocketService implements OnDestroy{
     }
 
     // Room Actions
-    createRoom(playerName: string, clientId: string): void {
+    createRoom(playerName: string): void {
+        let clientId = this.clientId;
         this.socket.emit('create-room', { playerName, clientId });
     }
 
-    joinRoom(roomCode: string, playerName: string, clientId: string): void {
+    joinRoom(roomCode: string, playerName: string): void {
+        let clientId = this.clientId;
         this.socket.emit('join-room', {
             roomCode: roomCode.toUpperCase(), 
             playerName,
@@ -168,24 +178,12 @@ export class GameSocketService implements OnDestroy{
 
     // Game Actions
     sendAction(roomCode: string, action: string, payload: any): void {
+        let clientId = this.clientId;
         this.socket.emit('game-action', { 
             roomCode,
             action,
+            clientId,
             payload
-        });
-    }
-
-    dealHands(targetPlayerId: string, hand: Card[]): void {
-        this.socket.emit('deal-hand', {
-            targetPlayerId: targetPlayerId,
-            hand
-        })
-    }
-
-    syncState(roomCode: string, gameState: Partial<GameState>): void {
-        this.socket.emit('sync-state', { 
-            roomCode,
-            gameState
         });
     }
 
@@ -209,10 +207,8 @@ export class GameSocketService implements OnDestroy{
         })
 
         this.socket.on('host-left', ( data: HostLeftPayload) => {
-            console.log("Host Left");
             this.ngZone.run(() => {
                 this.hostLeft$.next(data.hostLeft.clientId);
-                console.log(data.hostLeft);
                 this.gameState$.next(data.gameState);
             })
         })
@@ -243,15 +239,13 @@ export class GameSocketService implements OnDestroy{
 
         this.socket.on('hand-dealt', ({ gameState, hand }: HandDealtPayload) => {
             this.ngZone.run(() => {
+                this.myHand$.next(hand);
                 this.gameState$.next(gameState);
             });
         });
 
         this.socket.on('game-update', (data: GameUpdatePayload) => {
-            console.log('game-update received:', data.action)
-            this.ngZone.run(() => {
-                this.gameUpdate$.next(data);
-            });
+            this.gameState$.next(data.gameState);
         });
 
         this.socket.on('deal-hand', ({ hand }: { hand: Card[] }) => {
@@ -259,13 +253,6 @@ export class GameSocketService implements OnDestroy{
                 this.myHand$.next(hand);
             });
         });
-
-        this.socket.on('state-synced', (data: StateSyncedPayload) => {
-            this.ngZone.run(() => {
-                this.gameState$.next(data.gameState);
-                this.stateSynced$.next(data);
-            });
-        })
 
         this.socket.on('error', (data: ErrorPayload) => {
             this.ngZone.run(() => {

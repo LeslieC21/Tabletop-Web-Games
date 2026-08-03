@@ -12,29 +12,29 @@
     <!-- @if(!isMyTurn) {<h1 style="color: red;">&uarr;</h1>} -->
     </section>
     <main>
-        <!-- @for(card of SpadesService.potCards; track $index) {
-            <app-cards [card]="card"/>
-        } -->
+        @for(trick of currentGameState().currentTrick; track $index) {
+            <app-cards [card]="trick.card"/>
+        }
     </main>
     <section class="player">
-        @if(SpadesService.currentGameState().currentTurnIndex) {<h1 style="color: red;">&darr;</h1>}
+        @if(currentTurnId() === myId) {<h1 style="color: red;">&darr;</h1>}
         <h1 class="player-titles">You</h1>
         <!-- <h3>Team Bid: {{getTeamBid()}}</h3> -->
         <!-- <h3>Your Score: {{myPlayer?.score}} Hand Score: {{myPlayer?.handScore}}</h3> -->
         <div class="card-scroll-wrapper">
             <div class="player-cards">
-                <!-- @for(card of myHand; track $index) {
+                @for(card of myHand(); track $index) {
                     <app-cards
                         class="card" 
                         [class.selectedCard]="isSelected(card)"
-                        [card]="card" 
+                        [card]="card"
                         (click)="selectCard($event, card)"
                     />
-                } -->
+                }
             </div>
         </div>
         <div class="player-buttons">
-            <!-- <button (click)="playCard()" [disabled]="!isMyTurn || !submittedBid">Play Card</button> -->
+            <button (click)="playCard()" [disabled]="!(currentTurnId() === myId)">Play Card</button>
         </div>
     </section>
     <!-- @if(!submittedBid()) {
@@ -43,7 +43,7 @@
 </div>
 
 <!-- Modal -->
-    <!-- @if(showBidModal()) {
+    @if(currentGameState().phase == "bidding" && myPlayer()?.bid == -1 && currentTurnId() === myId) {
     <div class="modal-background">
         <div class="modal-container">
             <header>
@@ -52,11 +52,11 @@
             </header>
             <main>
                 <p>A bid is how many rounds of cards you expect to win.</p>
-                <input id="bid" type="number" [(ngModel)]="playerBid" min="0"/>
+                <input id="playerBid" type="number" min="0"/>
             </main>
             <footer>
                 <button (click)="setPlayerBid()">Submit Bid</button>
             </footer>
         </div>
     </div>
-    } -->
+    }

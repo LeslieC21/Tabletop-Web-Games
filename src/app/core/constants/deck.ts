@@ -11,6 +11,7 @@ export interface Card {
     rank: Rank;
     suit: Suit;
     value: number;
+    valid?: boolean;
 }
 
 export const SUITS: Suit[] = [

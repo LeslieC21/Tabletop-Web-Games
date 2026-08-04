@@ -11,7 +11,7 @@
     <h1 class="player-titles">Player1</h1>
     <!-- @if(!isMyTurn) {<h1 style="color: red;">&uarr;</h1>} -->
     </section>
-    <main>
+    <main class="deck">
         @for(trick of currentGameState().currentTrick; track $index) {
             <app-cards [card]="trick.card"/>
         }
@@ -19,14 +19,15 @@
     <section class="player">
         @if(currentTurnId() === myId) {<h1 style="color: red;">&darr;</h1>}
         <h1 class="player-titles">You</h1>
-        <!-- <h3>Team Bid: {{getTeamBid()}}</h3> -->
-        <!-- <h3>Your Score: {{myPlayer?.score}} Hand Score: {{myPlayer?.handScore}}</h3> -->
+        <h3>Team Bid: {{ myPlayer()?.bid }}</h3>
+        <h3>Your Score: {{ myPlayer()?.score }} Hand Score: {{myPlayer()?.tricksWon }}</h3>
         <div class="card-scroll-wrapper">
             <div class="player-cards">
                 @for(card of myHand(); track $index) {
                     <app-cards
                         class="card" 
                         [class.selectedCard]="isSelected(card)"
+                        [class.disabledCard]="card.valid === false"
                         [card]="card"
                         (click)="selectCard($event, card)"
                     />
@@ -42,7 +43,7 @@
     } -->
 </div>
 
-<!-- Modal -->
+<!-- Bidding Modal -->
     @if(currentGameState().phase == "bidding" && myPlayer()?.bid == -1 && currentTurnId() === myId) {
     <div class="modal-background">
         <div class="modal-container">
@@ -56,6 +57,57 @@
             </main>
             <footer>
                 <button (click)="setPlayerBid()">Submit Bid</button>
+            </footer>
+        </div>
+    </div>
+    }
+
+    <!-- Hand Winner/Game Winner Modal -->
+    @if(showScoreModal()) {
+    <div class="modal-background">
+        <div class="modal-container">
+            <header>
+                <h1>Hand Complete!</h1>
+                <h2>
+                    You <span><b>{{ (myPlayer()!.score > myOldScore()) ? "gained" : "lost" }}</b></span> points.
+                </h2>
+                <hr />
+            </header>
+            <main>
+                <p>
+                    You
+                    <span> bid 
+                        <b>{{ myPlayer()!.bid }}</b>
+                    </span> and 
+                    <span>scored
+                        <b>{{ myPlayer()!.tricksWon }}</b>
+                    </span> trick(s)!
+                </p>
+                <p>
+                    <b>
+                        You're new score is <span>{{ myPlayer()!.score }}</span>
+                    </b>
+                </p>
+                <div class="player-scores">
+                    @for(player of currentGameState().players; track player.clientId) {
+                        <fieldset class="player-score">
+                            <details>
+                                <summary>See {{ player.name }}s' Score</summary>
+                                <p>Bid: {{ player.bid }}</p>
+                                <p>Tricks Won: {{ player.tricksWon }}</p>
+                                <p>Score: {{ player.score }}</p>
+                            </details>
+                        </fieldset>
+                    }
+                </div>
+            </main>
+            <hr />
+            <footer>
+                @if(myPlayer()!.isHost) {
+                    <button (click)="showScoreModal.set(false)" [disabled]="!myPlayer()?.isHost">Ok</button>
+                } @else {
+                    <p>Waiting for host to continue...</p>
+                }
             </footer>
         </div>
     </div>

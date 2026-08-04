@@ -1,0 +1,32 @@
+CURRENT BUGS: 
+	1. sometimes Aces act like they have a small value and lose.
+	2. If two teams or players reach 500 on the last hand it only takes the first one
+	
+
+IDEAS FOR FUTURE: 
+	1. Implement a 'hard' mode that says if you get 10 bags (over the whole game) you are deducted 100 points.
+	2. Blind Nil (Bidding Nil before looking at your cards doubles the stakes to +200 or -200 points.)
+
+
+
+
+1. Submit Bids
+2. Ends Turn	
+	-> 
+	a. New Players Turn
+	b. Checks if we are looking at the dealer from this round. We are- update game phase.
+	c. Determine New players valid cards.
+	d. Broadcasts to all players.
+3. Game Action: Plays Card
+	-> 
+	a. Determine if this card breaks spades
+	b. Takes Card out of players deck.
+	c. Pushes card into current Tricks deck WITH playerID that threw the card.
+	d. Ends Turn.
+		-> 
+		a. New Players Turn	
+		b. Checks if we are looking at the dealer. We are- determine round winner.
+		c. Update gameState: tricksWon, currentTrick, dealerIndex, currentTurnIndex, tricksPlayed, roundNumber
+		d. Determine new players valid cards.
+		e. sendGameUpdateToPlayers
+	

@@ -6,20 +6,25 @@ const suits = [
     { name: 'Spades', imageUrl: '/Spades.png'},
 ];
 
-const Ranks = {
-    2: "2", 3: "3", 4: "4", 5: "5", 6: "6", 7: "7",
-    8: "8", 9: "9", 10: "10",
-    11: "J", 12: "Q", 13: "K", 14: "A",
+// const Ranks = {
+//     2: "2", 3: "3", 4: "4", 5: "5", 6: "6", 7: "7",
+//     8: "8", 9: "9", 10: "10",
+//     11: "J", 12: "Q", 13: "K", 14: "A",
+// };
+
+const TestRanks = {
+    2: "2", 3: "3"
 };
 
 function createDeck() {
     const deck = [];
     for (const suit of suits) {
-        for(let value = 2; value <= 14; value++) {
+        // for(let value = 2; value <= 14; value++) {
+        for(let value = 2; value <= 3; value++) {
             deck.push({
                 suit,
                 value,
-                rank: Ranks[value]
+                rank: TestRanks[value]
             });
         }
     }
@@ -119,10 +124,11 @@ io.on('connection', (socket) => {
                 socketId: socket.id, 
                 name: playerName, 
                 isHost: true,
-                totalScore: 0,
-                handScore: 0,
                 hand: [],
-                bid: -1
+                bid: -1,
+                tricksWon: 0,
+                score: 0,
+                bags: 0
             }],
             gameState: { 
                 started: false,
@@ -165,13 +171,14 @@ io.on('connection', (socket) => {
 
         room.players.push({
             clientId: clientId,
-            socketId: socket.id,
-            name: playerName,
-            isHost: false,
-            totalScore: 0,
-            handScore: 0,
-            hand: [],
-            bid: -1,
+                socketId: socket.id, 
+                name: playerName, 
+                isHost: false,
+                hand: [],
+                bid: -1,
+                tricksWon: 0,
+                score: 0,
+                bags: 0
         });
 
         socket.join(roomCode);
@@ -217,7 +224,6 @@ io.on('connection', (socket) => {
         room.players.forEach((player) => {
             io.to(player.socketId).emit("hand-dealt", {
                 hand: player.hand,
-                // gameState: room.gameState
                 gameState: sanitizeGameStateFor(room.gameState, player.clientId)
             })
         });
@@ -242,13 +248,15 @@ io.on('connection', (socket) => {
             case "play-card":
                 // Payload only has the card played
                 // Move card from player hand to currentTrick
-                if(!room.gameState.spadesBroken && payload.card.suit.name === "Spades")
+                if(!room.gameState.spadesBroken && payload.card.suit.name === "Spades") {
+                    console.log("Spades Broken!" + payload.card);
                     room.gameState.spadesBroken = true;
+                }
+
                 const playedCardIndex = playerToMutate.hand.findIndex(card => 
                     card.rank === payload.card.rank && 
                     card.suit.name === payload.card.suit.name
                 );
-
                 let addTrick = { card: payload.card, cardOwner: playerToMutate.clientId }
                 room.gameState.currentTrick.push(addTrick);
                 playerToMutate.hand.splice(playedCardIndex, 1);
@@ -257,6 +265,26 @@ io.on('connection', (socket) => {
                     player: player.clientId == playerToMutate.clientId ? playerToMutate : player
                 }))
                 endTurn(room);
+                sendGameUpdateToPlayers(room);
+            break;
+            case "new-hand":
+                // Game State: change the dealerIndex to next player, redeal cards, phase -> "bidding", currentIndex to dealer
+                // reset tricksPlayed to 0, reset spadesBroken, 
+                // Players - Give players their new hands, set bid to null, tricksWon back to 0
+                room.gameState.dealerIndex = (room.gameState.roundNumber % room.players.length) - 1;
+                dealDeck(room.players);
+
+                room.gameState.phase = "bidding";
+                room.gameState.currentTurnIndex = room.gameState.dealerIndex;
+                room.gameState.tricksPlayed = 0;
+                room.gameState.spadesBroken = false;
+
+                room.players.forEach((p) => ({
+                    ...p,
+                    bid: -1,
+                    tricksWon: 0
+                }))
+                console.log(room);
                 sendGameUpdateToPlayers(room);
             break;
         }
@@ -315,13 +343,13 @@ function endTurn(room) {
     let s = room.gameState.currentTurnIndex + 1;
     room.gameState.currentTurnIndex = s % room.gameState.players.length;
 
+    // Check if every player has had a turn
     if(room.gameState.currentTurnIndex === room.gameState.dealerIndex) {
         switch(room.gameState.phase) {
             case "bidding":
                 room.gameState.phase = "playing";
             break;
             case "playing":
-                // Determine trick winner - Always happen
                 // If a spade is played it wins
                 // No spade is played - so highest card that matches the suit wins
                 // Assume the first player to throw won the trick unless proven otherwise
@@ -340,10 +368,11 @@ function endTurn(room) {
                     }
                 });
 
-                let winnerIndex = room.gameState.currentTrick.findIndex(p => p.card.suit.name === highestSuitPlayed && p.card.value == highestCard);
-
+                let winnerId = room.gameState.currentTrick.find(p => p.card.suit.name === highestSuitPlayed && p.card.value == highestCard).cardOwner;
                 // 1. Give winner the point (tricksWon)
+                let winnerIndex = room.gameState.players.findIndex(p => p.clientId === winnerId);
                 room.gameState.players[winnerIndex].tricksWon += 1;
+
                 // 2. Empty currentTrick
                 room.gameState.currentTrick.length = 0;
                 // 3. Winner becomes new dealer
@@ -353,10 +382,21 @@ function endTurn(room) {
                 room.gameState.tricksPlayed += 1;
                 // 5. Increase roundNumber
                 room.gameState.roundNumber += 1;
-                // Determine hand winner - Sometimes happen
+
+                // Check if hand is complete
+                if(room.gameState.players.at(0).hand.length === 0) {
+                    // HAND COMPLETED
+                    // Change gameState to hand-complete
+                    // Calculate Hand Scores
+                    // Determine if a team has 500 points - game over
+                    room.gameState.phase = "hand-complete";
+                    calculateScores(room);
+                }
             break;
             case "hand-complete":
-
+                    // Game State: change the dealerIndex to next player, redeal cards, phase -> "bidding", currentIndex to dealer
+                    // reset tricksPlayed to 0, reset spadesBroken, 
+                    // Players - Give players their new hands, set bid to null, tricksWon back to 0
             break;
             case "game-over":
                 
@@ -364,9 +404,10 @@ function endTurn(room) {
         }
     }
 
-    if(room.gameState.phase === "playing" && room.players.at(-1).handSize != 0) {
+    // Determine if hand has been completed.
+    if(room.gameState.phase === "playing") {
         determineCardValidity(room);
-    }
+    } 
 }
 
 function determineCardValidity(room) {
@@ -374,13 +415,14 @@ function determineCardValidity(room) {
     // check if spades has been broken as well
     let currentPlayer = room.players[room.gameState.currentTurnIndex];
 
+    // This could be better 
     currentPlayer.hand.forEach(card => {
         // Only check what is valid
         switch(room.gameState.spadesBroken) {
             case true:
                 if(room.gameState.currentTrick.length === 0)
-                    return true;
-                else if(card.suit.name === "Spades")
+                    card.valid = true;
+                else if(card.suit.name === 'Spades')
                     card.valid = true;
                 else if(card.suit.name === room.gameState.currentTrick[0].card.suit.name)
                     card.valid = true;
@@ -388,30 +430,67 @@ function determineCardValidity(room) {
                     card.valid = false;
             break;
             case false:
-                if(room.gameState.currentTrick.length === 0 && card.suit.name === "Spades")
-                    card.valid = false;
-                else if(room.gameState.currentTrick.length === 0)
+                if(room.gameState.currentTrick.length === 0 && card.suit.name !== 'Spades')
                     card.valid = true;
-                if(room.gameState.currentTrick.length !== 0 && card.suit.name === room.gameState.currentTrick[0].card.suit.name)
-                    return true;
+                else if(room.gameState.currentTrick.length !== 0 && card.suit.name === room.gameState.currentTrick[0].card.suit.name)
+                    card.valid = true;
+                else if(room.gameState.currentTrick.length === 0)
+                    card.valid = false;
                 else 
                     card.valid = false;
             break;
         }
     })
-
     // Check if there is atleast one card that is valid
     const hasValidCards = currentPlayer.hand.some(card => card.valid === true);
     if(!hasValidCards) {
-        if(!room.gameState.spadesBroken) {
+        if(!room.gameState.spadesBroken)
             room.gameState.spadesBroken = true;
-                        
-            // Set every card in hand to valid
+
+        // Set every card in hand to valid
             currentPlayer.hand.forEach(card => {
                 card.valid = true;
             })
-        }
     }
+}
+
+function calculateScores(room) {
+    // *1. Player/Team Scores 10 points for each trick bid and 1 point for each bag.
+    // *2. If a Player/Team doesnt take enough tricks to fulfil their bid, they are deducted bid * 10 points.
+    // *3. If a Player/Team bid 0 and are successful they are awarded 100 points, unsuccessfull -100 points.
+    // 4. Blind Nil     
+    // 5. If a player bid nill- it is only scored based on their INDIVIDUAL tricksTaken
+
+    room.players.forEach((p) => {
+        // Bid Nil - only based off individual preformance
+        if(p.bid === 0) {
+            p.score += (p.tricksWon > 0 ? 100 : -100);
+        }
+
+        p.score += (
+            p.tricksWon >= p.bid ? 
+            ((p.bid * 10) + (p.tricksWon % p.bid)) : (p.bid * -10)
+        );
+    })
+
+    // Check if the game is won
+    const winner = room.players.find(p => p.score === 500);
+    if(winner !== undefined) {
+        // There is a winner
+        console.log("Hand completed, Winner: " + winner);
+        room.players.forEach((player) => {
+            io.to(player.socketId).emit("winner", {
+                winner: winner
+            })
+        })
+    } else {
+        console.log("Hand completed, No winner determined.");
+        sendGameUpdateToPlayers(room);
+    }
+}
+
+function startNewHand(room) {
+
 }
 
 const PORT = process.env.PORT || 3000;

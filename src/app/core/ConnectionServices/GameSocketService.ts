@@ -118,7 +118,6 @@ export class GameSocketService implements OnDestroy{
             this.clientId = crypto.randomUUID();
             localStorage.setItem("clientId", this.clientId);
         }
-        console.log("Client ID " + this.clientId);
     }
 
     getClientId(): string {

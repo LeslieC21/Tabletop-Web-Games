@@ -33,12 +33,23 @@ export class SpadesGameBoard {
     });
 
     selectedCard = signal<Card | null>(null);
+    myOldScore = signal<number>(0);
+    showScoreModal = signal<boolean>(false);
   
     constructor(private gameSocket: GameSocketService) {
       this.gameSocket.gameState$.subscribe((state) => {
         console.log("Game State Updated to: ");
         console.log(state);
+        if(state.phase === "hand-complete") {
+          // Keep Old game state to display to modal
+          this.showScoreModal.set(true);
+
+          // MOVE THIS TO ITS OWN FUNC
+          // // Continue the game while modal is open
+          // this.gameSocket.sendAction(this.roomCode, 'new-hand', {});
+        }
         this.currentGameState.update(s => ({ ...state }));
+        this.selectedCard.set(null);
       });
     }
 
@@ -55,6 +66,7 @@ export class SpadesGameBoard {
 
     // Send value of the bid to the server
     this.gameSocket.sendAction(this.roomCode, 'submit-playerBid', { bid: playerBid });
+    this.myOldScore.set(this.myPlayer()?.score!);
   }
 
   selectCard(event: Event, card: Card) {

@@ -78,7 +78,7 @@ section {
     width: 50%;
 }
 
-header span {
+span {
     color: rgb(146, 5, 5);;
 }
 
@@ -90,8 +90,11 @@ footer {
 }
 
 main {
+    margin: 2rem 0;
+}
+
+.deck {
     display: flex;
-    margin-top: 2rem;
 }
 
 footer button {
@@ -157,6 +160,15 @@ button:hover {
 
 .selectedCard {
     transform: translateY(-20px);
+    border: 1px solid rgb(253, 133, 133);
+}
+
+.disabledCard {
+    pointer-events: none;
+}
+
+.disabledCard:hover {
+    transform: 0;
 }
 
 .showModal-button {
@@ -170,4 +182,16 @@ button:hover {
     border: 2px solid rgba(232, 252, 255, 0.493);
     border-radius: 10px;
     z-index: 40;
+}
+
+.player-scores {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 20px;
+    height: auto;
+}
+
+summary:hover {
+    cursor: pointer;
 }

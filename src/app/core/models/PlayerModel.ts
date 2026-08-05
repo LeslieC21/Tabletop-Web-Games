@@ -11,4 +11,5 @@ export interface PlayerModel {
     tricksWon: number;  // Resets each hand
     score: number;      // Running score across each hand
     bags: number;       // An Extra trick won ABOVE your teams bid. This runs across all hands.
+    ready: boolean;
 }

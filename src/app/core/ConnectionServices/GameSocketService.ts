@@ -7,14 +7,15 @@ import { Card } from "../constants/deck";
  
 export interface GameState {
   started: boolean;
-  phase: "waiting" | "bidding" | "playing" | "hand-complete" | "game-over";
+  phase: "waiting" | "bidding" | "playing" | "hand-complete" | "game-over" | "sudden-death";
   players: PlayerModel[];
   dealerIndex: number,          // whose turn it is to deal — rotates each hand
   currentTurnIndex: number,     // index into players[] — whose turn to bid/play
   currentTrick: Trick[],             // cards played so far this trick: [{ playerId, card }]
   tricksPlayed: number,         // how many tricks completed this hand (0–13)
   spadesBroken: boolean,        // has a spade been played yet this hand
-  roundNumber: number           // which hand of the overall game this is
+  roundNumber: number,           // which hand of the overall game this is
+  winner: PlayerModel | null
 }
 
 export function createDefaultGameState(): GameState {
@@ -28,6 +29,7 @@ export function createDefaultGameState(): GameState {
         tricksPlayed: 0,
         spadesBroken: false,
         roundNumber: 1,
+        winner: null
     }
 }
 
@@ -63,6 +65,7 @@ export interface PlayerJoinedPayload {
 export interface PlayerLeftPayload {
     players: PlayerModel[];
     playerName: string;
+    gameState: GameState;
 }
 
 export interface HostLeftPayload {
@@ -171,7 +174,9 @@ export class GameSocketService implements OnDestroy{
         this.socket.emit('start-game', { roomCode })
     }
 
-    leaveGame(clientId: string): void {
+    leaveGame(): void {
+        let clientId = this.getClientId();
+        console.log("Attempting to leave game... " + clientId);
         this.socket.emit('leave-game', { clientId })
     }
 
@@ -206,10 +211,9 @@ export class GameSocketService implements OnDestroy{
         })
 
         this.socket.on('host-left', ( data: HostLeftPayload) => {
-            this.ngZone.run(() => {
                 this.hostLeft$.next(data.hostLeft.clientId);
                 this.gameState$.next(data.gameState);
-            })
+                console.log(data);
         })
 
         this.socket.on('room-joined', ( data: RoomJoinedPayload) => {
@@ -226,14 +230,13 @@ export class GameSocketService implements OnDestroy{
                 this.players$.next(data.players);
                 this.playerJoined$.next(data);
             });
-            console.log(this.players$);
         });
 
         this.socket.on('player-left', (data: PlayerLeftPayload) => {
-            this.ngZone.run(() => {
+            console.log("player-left");
                 this.players$.next(data.players);
                 this.playerLeft$.next(data);
-            });
+                this.gameState$.next(data.gameState);
         });
 
         this.socket.on('hand-dealt', ({ gameState, hand }: HandDealtPayload) => {
@@ -262,6 +265,7 @@ export class GameSocketService implements OnDestroy{
     }
 
     ngOnDestroy(): void {
+        this.leaveGame();
         this.disconnect();
     }
 }

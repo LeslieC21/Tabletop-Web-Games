@@ -20,6 +20,10 @@
     animation: flipCard 2s 0.5s forwards;
 }
 
+.is-selected {
+    border: 3px solid rgb(231, 60, 60);
+}
+
 .card-front.is-invalid::after {
     content: "";
     position: absolute;

@@ -67,7 +67,8 @@ export const BJ_DECK: Card[] = SUITS.flatMap(suit => (
     Object.keys(BJ_RANK_VALUES) as Rank[]).map(rank => ({
         rank,
         suit,
-        value: BJ_RANK_VALUES[rank]
+        value: BJ_RANK_VALUES[rank],
+        valid: true
     }))
 );
 

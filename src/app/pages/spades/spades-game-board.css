@@ -30,6 +30,7 @@
 
 .card-scroll-wrapper {
     width: 95%;
+    padding: .8rem;
     min-width: 0;
     overflow-x: auto;
     overflow-y: visible;
@@ -84,9 +85,10 @@ span {
 
 footer {
     display: flex;
+    flex-direction: column;
     justify-content: space-evenly;
     align-items: center;
-    margin-top: 3rem;
+    margin-top: 2rem;
 }
 
 main {
@@ -160,7 +162,6 @@ button:hover {
 
 .selectedCard {
     transform: translateY(-20px);
-    border: 1px solid rgb(253, 133, 133);
 }
 
 .disabledCard {

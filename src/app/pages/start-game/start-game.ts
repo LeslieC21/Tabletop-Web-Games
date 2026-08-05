@@ -4,12 +4,11 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 
-import { GameSocketService } from '../../core/ConnectionServices/GameSocketService';
+import { createDefaultGameState, GameSocketService } from '../../core/ConnectionServices/GameSocketService';
 import { PlayerModel } from '../../core/models/PlayerModel';
 import { Game, GAME_RULES } from '../../core/constants/gameRules';
 import { SpadesGameBoard } from '../spades/spades-game-board';
 import { MarkdownPipe } from '../../core/OtherServices/MarkdownPipe';
-import { StoreService } from '../../core/GameServices/Store';
 
 @Component({
   selector: 'app-start-game',
@@ -40,14 +39,10 @@ export class StartGame {
   constructor(
     public gameSocket: GameSocketService, 
     private route: ActivatedRoute, 
-    private cdr: ChangeDetectorRef, 
-    private router: Router,
-    private store: StoreService) {
+    private router: Router) {
     this.gameTitle = this.route.snapshot.paramMap.get('game')! as Game;
     this.instructions = (GAME_RULES[this.gameTitle]).instructions;
     this.allowMultiplePlayers = (GAME_RULES[this.gameTitle]).allowMultiplayer;
-    
-    // this.clientId = store.getClientId();
   }
 
   ngOnInit(): void {
@@ -64,7 +59,6 @@ export class StartGame {
 
     this.subs.add(
       this.gameSocket.roomCreated$.subscribe(({ roomCode, players }) => {
-        // console.log('roomCreated$ fired, roomCode:', roomCode);
         this.roomCode = roomCode;
         this.players.set(players);
         this.inRoom.set(true);
@@ -81,17 +75,21 @@ export class StartGame {
         this.amHost.set(this.gameSocket.isHost(players));
       })
     );
+    
 
     this.subs.add(
       this.gameSocket.players$.subscribe(players => {
         this.players.set(players);
+        console.log(players);
         this.amHost.set(this.gameSocket.isHost(players));
       })
     );
 
     this.subs.add(
       this.gameSocket.gameState$.subscribe((state) => { 
+        console.log(state);
         this.gameStarted.set(state.started);
+        this.players.set(state.players);
       })
     );
 
@@ -112,9 +110,7 @@ export class StartGame {
           this.gameStarted.set(false);
 
           // Show modal that the host left
-          console.log("HostLeft fired");
           this.showHostLeft.set(state);
-          console.log(this.showHostLeft());
           this.joinCode = '';
         }
       })
@@ -141,16 +137,15 @@ export class StartGame {
   }
 
   resetGame(): void {
-    this.joinCode = '';
-    this.roomCode = null;
-    this.players.set([]);
     this.gameStarted.set(false);
-    this.inRoom.set(false);
-    this.amHost.set(false);
   }
 
   leaveRoom(): void {
-    this.gameSocket.leaveGame(this.clientId);
+    this.inRoom.set(false);
+    this.roomCode = '';
+    this.joinCode = '';
+    this.gameSocket.gameState$.next(createDefaultGameState());
+    this.gameSocket.leaveGame();
     this.resetGame();
   }
 

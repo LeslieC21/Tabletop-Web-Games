@@ -128,7 +128,8 @@ io.on('connection', (socket) => {
                 bid: -1,
                 tricksWon: 0,
                 score: 0,
-                bags: 0
+                bags: 0,
+                ready: true
             }],
             gameState: { 
                 started: false,
@@ -139,7 +140,8 @@ io.on('connection', (socket) => {
                 currentTrick: [],
                 tricksPlayed: 0,
                 spadesBroken: false,
-                roundNumber: 1
+                roundNumber: 1,
+                winner: null
             },
         };
 
@@ -178,7 +180,8 @@ io.on('connection', (socket) => {
                 bid: -1,
                 tricksWon: 0,
                 score: 0,
-                bags: 0
+                bags: 0,
+                ready: true
         });
 
         socket.join(roomCode);
@@ -249,7 +252,6 @@ io.on('connection', (socket) => {
                 // Payload only has the card played
                 // Move card from player hand to currentTrick
                 if(!room.gameState.spadesBroken && payload.card.suit.name === "Spades") {
-                    console.log("Spades Broken!" + payload.card);
                     room.gameState.spadesBroken = true;
                 }
 
@@ -279,18 +281,45 @@ io.on('connection', (socket) => {
                 room.gameState.tricksPlayed = 0;
                 room.gameState.spadesBroken = false;
 
-                room.players.forEach((p) => ({
-                    ...p,
-                    bid: -1,
-                    tricksWon: 0
-                }))
-                console.log(room);
+                room.gameState.players.forEach((p) => {
+                    p.bid = -1;
+                    p.tricksWon = 0;
+                })
+
                 sendGameUpdateToPlayers(room);
+            break;
+            case 'mark-ready':
+                // Mark a specific player as ready
+                // Reset Game as well
+                room.gameState.players.forEach(p => {
+                    p.ready = p.clientId === clientId ? true : p.ready;
+                    p.hand = [];
+                    p.handSize = 0;
+                    p.bid = -1;
+                    p.tricksWon = 0;
+                    p.score = 0;
+                    p.bags = 0;
+                })
+                
+                room.gameState.started = false;
+                room.gameState.phase = "waiting";
+                room.gameState.dealerIndex = 0;
+                room.gameState.currentTurnIndex = 0;
+                room.gameState.tricksPlayed = 0;
+                room.gameState.spadesBroken = false;
+                room.gameState.roundNumber = 1;
+                room.gameState.winner = null;
+                
+                const readiedPlayers = room.gameState.players.filter(p => p.ready === true);
+                // Send GameUpdate to only the players that have readied
+                readiedPlayers.forEach(p => {
+                    io.to(p.socketId).emit("game-update", {
+                    gameState: sanitizeGameStateFor(room.gameState, clientId)
+                    })
+                })
             break;
         }
     });
-
-
 
     // Disconnect from GAME not socket
     socket.on("leave-game", ( clientId ) => {
@@ -302,30 +331,37 @@ io.on('connection', (socket) => {
             
         // Grab room that had a disconnected player
         const room = rooms[roomCode];
-            
+
+
         // Grab list of players that are still in the game & player that left
         room.players = room.players.filter((p) => p.socketId !== socket.id);
+        room.gameState.players = room.players.filter(p => p.clientId !== clientId)
         const socketIds = room.players.map((p) => p.socketId);
 
         // If there are no players left - delete the room
         if(room.players.length === 0) {
             delete rooms[roomCode];
-        } else {    
-            // If there is now no host in the room
-            if(!room.players.find((p) => p.isHost)) {
-                io.to(roomCode).emit("host-left", {
+        } else { 
+            // If the game is being played - stop the game.
+            if(room.gameState.phase !== "waiting" && room.gameState.phase !== "game-over") {
+                io.to(socketIds).emit("host-left", {
                     hostLeft: clientId,
                     gameState: { started: false },
                 })
                 delete rooms[roomCode];
             } else {
-                // Notify remaining players that host left
+                // The game is not being played - Find a new host
+                const isHost = room.players.some(p => p.isHost === true);
+                if(!isHost) room.players[0].isHost = true;
+
                 io.to(socketIds).emit("player-left", {
                     players: room.players,
-                    playerName
+                    playerName,
+                    gameState: room.gameState
                 });
             }
         }
+        console.log(room.players);
     });
 });
 
@@ -398,9 +434,6 @@ function endTurn(room) {
                     // reset tricksPlayed to 0, reset spadesBroken, 
                     // Players - Give players their new hands, set bid to null, tricksWon back to 0
             break;
-            case "game-over":
-                
-            break;
         }
     }
 
@@ -422,8 +455,8 @@ function determineCardValidity(room) {
             case true:
                 if(room.gameState.currentTrick.length === 0)
                     card.valid = true;
-                else if(card.suit.name === 'Spades')
-                    card.valid = true;
+                // else if(card.suit.name === 'Spades')
+                //     card.valid = true;
                 else if(card.suit.name === room.gameState.currentTrick[0].card.suit.name)
                     card.valid = true;
                 else 
@@ -464,33 +497,49 @@ function calculateScores(room) {
     room.players.forEach((p) => {
         // Bid Nil - only based off individual preformance
         if(p.bid === 0) {
-            p.score += (p.tricksWon > 0 ? 100 : -100);
+            p.score += (
+                p.tricksWon > 0 ?
+                 -100 : 100
+            );
+        } else {
+            p.score += (
+                p.tricksWon >= p.bid ? 
+                ((p.bid * 100) + (p.tricksWon - p.bid)) : (p.bid * -100)
+            );
         }
-
-        p.score += (
-            p.tricksWon >= p.bid ? 
-            ((p.bid * 10) + (p.tricksWon % p.bid)) : (p.bid * -10)
-        );
     })
 
     // Check if the game is won
-    const winner = room.players.find(p => p.score === 500);
-    if(winner !== undefined) {
-        // There is a winner
-        console.log("Hand completed, Winner: " + winner);
-        room.players.forEach((player) => {
-            io.to(player.socketId).emit("winner", {
-                winner: winner
-            })
+    const winners = room.players.filter(p => p.score >= 200);
+    if(winners.length >= 2) {
+        let winner = winners[0];
+        winners.forEach(p => {
+            if(p.score === winner.score && p.clientId !== winner.clientId) {
+                // TIE
+                room.gameState.phase = "sudden-death";
+                sendGameUpdateToPlayers(room);
+            } else if(p.score > winner.score) {
+                winner = p;
+            }
         })
+
+        if(room.gameState.phase != "sudden-death") {
+            room.gameState.phase = "game-over";
+            room.gameState.winner = winner;
+            room.gameState.players.forEach(p => p.ready = false);
+            sendGameUpdateToPlayers(room);
+        }
+    } else if(winners.length !== 0) {
+        // There is a winner
+        room.gameState.phase = "game-over";
+        room.gameState.winner = winners[0];
+        room.gameState.players.forEach(p => p.ready = false);
+        console.log("Game Over! Winner: " + room.gameState.winner);
+        sendGameUpdateToPlayers(room);
     } else {
         console.log("Hand completed, No winner determined.");
         sendGameUpdateToPlayers(room);
     }
-}
-
-function startNewHand(room) {
-
 }
 
 const PORT = process.env.PORT || 3000;

@@ -18,8 +18,10 @@ import { reset } from 'canvas-confetti';
 export class SpadesGameBoard {
   @Input ({ required: true }) roomCode!: string;
   @Output() closeGame = new EventEmitter<void>();
+  @Output() resetGame = new EventEmitter<void>();
 
   currentGameState = signal<GameState>(createDefaultGameState());
+  myOldGameState = signal<GameState>(createDefaultGameState());
     currentTurnId = computed(() => {
       let s = this.currentGameState().currentTurnIndex;
       return this.currentGameState().players.at(s)?.clientId;
@@ -33,23 +35,27 @@ export class SpadesGameBoard {
     });
 
     selectedCard = signal<Card | null>(null);
-    myOldScore = signal<number>(0);
     showScoreModal = signal<boolean>(false);
+    showBidModal = signal<boolean>(false);
   
     constructor(private gameSocket: GameSocketService) {
       this.gameSocket.gameState$.subscribe((state) => {
-        console.log("Game State Updated to: ");
-        console.log(state);
-        if(state.phase === "hand-complete") {
-          // Keep Old game state to display to modal
+        // console.log("Game State Updated to: ");
+        // console.log(state);
+        if(state.phase === "hand-complete" || state.phase === "game-over" || state.phase === "sudden-death") {
           this.showScoreModal.set(true);
-
-          // MOVE THIS TO ITS OWN FUNC
-          // // Continue the game while modal is open
-          // this.gameSocket.sendAction(this.roomCode, 'new-hand', {});
+        } else if(this.showScoreModal() && state.phase === "bidding") {
+          this.showScoreModal.set(false);
         }
+
         this.currentGameState.update(s => ({ ...state }));
         this.selectedCard.set(null);
+
+        if(this.currentGameState().phase == "bidding"&& 
+          this.myPlayer()?.bid == -1 && 
+          this.currentTurnId() === this.myId) {
+          this.showBidModal.set(true);
+        } 
       });
     }
 
@@ -58,15 +64,22 @@ export class SpadesGameBoard {
     }
 
   leaveGame() {
+    this.showScoreModal.set(false);
     this.closeGame.emit();
   }
 
-  setPlayerBid() {
-    const playerBid = (document.getElementById('playerBid') as HTMLInputElement).value;
+  playAgain() {
+    this.gameSocket.sendAction(this.roomCode, 'mark-ready', {});
+    this.resetGame.emit();
+  }
 
+  setPlayerBid() {
+    const playerBid = Number((document.getElementById('playerBid') as HTMLInputElement).value);
+    
     // Send value of the bid to the server
     this.gameSocket.sendAction(this.roomCode, 'submit-playerBid', { bid: playerBid });
-    this.myOldScore.set(this.myPlayer()?.score!);
+    this.myOldGameState.set(this.currentGameState());
+    this.showBidModal.set(false);
   }
 
   selectCard(event: Event, card: Card) {
@@ -84,5 +97,12 @@ export class SpadesGameBoard {
 
   playCard() {
     this.gameSocket.sendAction(this.roomCode, 'play-card', { card: this.selectedCard() })
+  }
+
+  playNewHand() {
+    this.showScoreModal.set(false);
+    if(this.myPlayer()!.isHost) {
+      this.gameSocket.sendAction(this.roomCode, 'new-hand', {});
+    }
   }
 }

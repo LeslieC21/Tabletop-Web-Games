@@ -150,6 +150,19 @@ ul {
     border: 2px solid #305a4a;
 }
 
+.modal-container2 {
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    align-items: center;
+    background-color: white;
+    padding: 1rem;
+    border-radius: 5px;
+    text-align: center;
+    box-shadow: 5px 5px 5px black;
+    border: 2px solid #305a4a;
+}
+
 .modal-title {
     font-family: 'Gagalin', sans-serif;
     letter-spacing: 3px;
@@ -238,4 +251,8 @@ li {
     letter-spacing: 3px;
     margin-top: 0.5em;
     margin-bottom: 0.5em;
+}
+
+.isReady {
+    color: rgb(150, 150, 150);
 }

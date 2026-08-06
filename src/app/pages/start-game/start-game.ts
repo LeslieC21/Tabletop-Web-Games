@@ -1,10 +1,10 @@
-import { ChangeDetectorRef, Component, effect, NgZone, signal } from '@angular/core';
+import { Component, effect, ElementRef, HostListener, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, RouterLink, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subscription } from 'rxjs';
+import { Subscription, fromEvent, merge, debounceTime, tap, filter } from 'rxjs';
 
-import { createDefaultGameState, GameSocketService } from '../../core/ConnectionServices/GameSocketService';
+import { createDefaultGameState, GameSocketService, ChatMessage } from '../../core/ConnectionServices/GameSocketService';
 import { PlayerModel } from '../../core/models/PlayerModel';
 import { Game, GAME_RULES } from '../../core/constants/gameRules';
 import { SpadesGameBoard } from '../spades/spades-game-board';
@@ -27,22 +27,82 @@ export class StartGame {
   joinCode = '';
   roomCode: string | null = null;
   players = signal<PlayerModel[]>([]);
+  chatMessages = signal<ChatMessage[]>([]);
   gameStarted = signal<boolean>(false);
   inRoom = signal<boolean>(false);
   amHost = signal<boolean>(false);
+  hideChat = signal<boolean>(true);
   myId = '';
   clientId = '';
   errorMsg = '';
 
   private subs = new Subscription();
+  chatBoxEle = viewChild<ElementRef>('chatBoxContainer');
+  @HostListener('window:keydown.shift.enter', ['$event'])
+  handleKeyDown(event: KeyboardEvent | Event) {
+    // Ensure we arent focused in the chat box
+    if(this.inRoom())
+      this.hideChat.update(c => !c);
+
+    // If we are opening the chat box - set the scroll to the bottom
+    if(!this.hideChat()) {
+      setTimeout(() => {
+        const scrollContainer = document.querySelector('.chat-messages');
+        const inputElement = document.getElementById('chat-box');
+        scrollContainer!.scrollTop = scrollContainer!.scrollHeight;
+        inputElement?.focus();
+      }, 1)
+    }
+  }
+  @HostListener('window:click', ['$event'])
+  handleClick(event: MouseEvent | Event ) {
+      const scrollContainer = document.getElementById('chat-box-container');
+      if(!scrollContainer?.contains(event.target as Node))
+        this.hideChat.set(true);
+  }
 
   constructor(
     public gameSocket: GameSocketService, 
     private route: ActivatedRoute, 
-    private router: Router) {
+    private router: Router
+  ) {
     this.gameTitle = this.route.snapshot.paramMap.get('game')! as Game;
     this.instructions = (GAME_RULES[this.gameTitle]).instructions;
     this.allowMultiplePlayers = (GAME_RULES[this.gameTitle]).allowMultiplayer;
+
+    effect(() => {
+      const elementRef = this.chatBoxEle();
+      if(elementRef) {
+        let el = elementRef.nativeElement;
+        let isHovering = true;
+
+        const enter$ = fromEvent(el, 'pointerenter').pipe(
+          tap(() => { isHovering = true; })
+        );
+        const exit$ = fromEvent(el, 'pointerleave').pipe(
+          tap(() => { isHovering = false; })
+        );
+
+        this.subs.add(
+          merge(
+            fromEvent(el, 'click'), 
+            fromEvent(el, 'mousemove'), 
+            fromEvent(el, 'keydown'),
+            fromEvent(el, 'pointerover'),
+            enter$,
+            exit$
+            )
+          .pipe(
+            tap(() => this.hideChat.set(false)),
+            debounceTime(4000),
+            filter(() => !isHovering)
+          )
+          .subscribe(() => {
+            this.hideChat.set(true)
+          })
+        )
+      }
+    })
   }
 
   ngOnInit(): void {
@@ -115,6 +175,13 @@ export class StartGame {
         }
       })
     )
+
+    this.subs.add(
+      this.gameSocket.chatMessages$.subscribe(newMsg => {
+        this.chatMessages.update(msgs => [...msgs, newMsg]);
+        this.hideChat.set(false);
+      })
+    )
   }
 
   createRoom(): void {
@@ -132,6 +199,7 @@ export class StartGame {
   }
 
   routeToHome(): void {
+    this.leaveRoom();
     this.showHostLeft.set(null);
     this.router.navigate(['/']);
   }
@@ -152,6 +220,19 @@ export class StartGame {
   closeHostLeftModal() {
     this.gameSocket.hostLeft$.next(null);
     this.showHostLeft.set(null);
+  }
+
+  sendMessage(input: HTMLInputElement) {
+    // Check that the input isn't empty
+    const msg = input.value;
+    if(msg == "") return;
+
+    const msgPayload = {
+      from: this.playerName,
+      message: msg
+    }
+    this.gameSocket.sendMessage(this.roomCode!, msgPayload);
+    input.value = "";
   }
 
   ngOnDestroy(): void {

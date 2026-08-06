@@ -79,6 +79,11 @@ export interface GameUpdatePayload {
     from: string;
 }
 
+export interface ChatMessage {
+    from: string;
+    message: string;
+}
+
 export interface ErrorPayload {
     message: string;
 }
@@ -103,6 +108,7 @@ export class GameSocketService implements OnDestroy{
     connected$ = new BehaviorSubject<boolean>(false);
     hostLeft$ = new BehaviorSubject<string | null>(null);
     myHand$ = new BehaviorSubject<Card[]>([]);
+    chatMessages$ = new Subject<ChatMessage>();
     error$ = new Subject<string>();
 
     // Event streams
@@ -191,6 +197,13 @@ export class GameSocketService implements OnDestroy{
         });
     }
 
+    sendMessage(roomCode: string, payload: any): void {
+        this.socket.emit('sent-message', {
+            roomCode,
+            payload
+        })
+    }
+
     // Helpers
     get socketId(): string {
         return this.socket?.id ?? '';
@@ -257,10 +270,12 @@ export class GameSocketService implements OnDestroy{
         });
 
         this.socket.on('error', (data: ErrorPayload) => {
-            this.ngZone.run(() => {
-                console.error('Server error:', data.message);
-                this.error$.next(data.message);
-            });
+            console.error('Server error:', data.message);
+            this.error$.next(data.message);
+        })
+
+        this.socket.on('new-message', (data: ChatMessage) => {
+            this.chatMessages$.next(data);
         })
     }
 

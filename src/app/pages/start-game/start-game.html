@@ -100,6 +100,15 @@
 </div>
 }
 
+<div class="chat-box-container" id="chat-box-container" #chatBoxContainer [class.hide-chat]="hideChat()">
+    <div class="chat-messages">
+        @for(msg of chatMessages(); track $index) {
+            <p>{{ msg.from }}: {{ msg.message }}</p>
+        }
+    </div>
+    <input type="text" id="chat-box" class="chat-box" placeholder="Type a message..." #myInput (keyup.enter)="sendMessage(myInput)"/>
+</div>
+
 @if((gameStarted())) {
     <div class="game-area">
             <app-spades-game-board (closeGame)="leaveRoom()" (resetGame)="resetGame()" [roomCode]="roomCode ?? joinCode"/>

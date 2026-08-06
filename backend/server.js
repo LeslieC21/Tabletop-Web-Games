@@ -321,6 +321,21 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on("sent-message", ({ roomCode, payload }) => {
+        // Payload = { from , message }
+        if(!roomCode || !rooms[roomCode])
+            return;
+
+        console.log("Server Recieved a message!");
+        console.log(payload.from + ": " + payload.message);
+
+        // Send message to others
+        io.to(roomCode).emit("new-message", {
+            from: payload.from,
+            message: payload.message
+        })
+    })
+
     // Disconnect from GAME not socket
     socket.on("leave-game", ( clientId ) => {
         const { roomCode, playerName } = socket.data;

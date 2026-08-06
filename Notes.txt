@@ -1,6 +1,7 @@
 CURRENT BUGS: 
-	9. Allow players to refresh page and still be in the game
-	1. Exiting At GameOver screen removes the score of the player that left
+	1. Allow players to refresh page and still be in the game
+	2. Both players playing again doesn't work.
+	
 
 IDEAS FOR FUTURE: 
 	1. Implement a 'hard' mode that says if you get 10 bags (over the whole game) you are deducted 100 points.

@@ -48,6 +48,10 @@ export class SpadesGameBoard {
           this.showScoreModal.set(false);
         }
 
+        if(state.phase != this.currentGameState().phase && state.phase !== "waiting") {
+          this.myOldGameState.set(state);
+        }
+
         this.currentGameState.update(s => ({ ...state }));
         this.selectedCard.set(null);
 

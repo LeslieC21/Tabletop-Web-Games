@@ -121,13 +121,13 @@
                     <span>Game Over!</span>
                 </h1>
                 <h2>
-                    <span>The winner is {{ currentGameState().winner!.name }}</span>
+                    <span>The winner is team {{ currentGameState().winner }}</span>
                 </h2>
                 <hr />
             </header>
             <main>
                 <div class="player-scores">
-                    @for(player of currentGameState().players; track player.clientId) {
+                    @for(player of myOldGameState().players; track player.clientId) {
                         <fieldset class="player-score">
                             <details>
                                 <summary>See {{ player.name }}s' Score</summary>

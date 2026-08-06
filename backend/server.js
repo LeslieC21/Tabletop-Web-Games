@@ -326,9 +326,6 @@ io.on('connection', (socket) => {
         if(!roomCode || !rooms[roomCode])
             return;
 
-        console.log("Server Recieved a message!");
-        console.log(payload.from + ": " + payload.message);
-
         // Send message to others
         io.to(roomCode).emit("new-message", {
             from: payload.from,
@@ -376,7 +373,6 @@ io.on('connection', (socket) => {
                 });
             }
         }
-        console.log(room.players);
     });
 });
 
@@ -444,11 +440,6 @@ function endTurn(room) {
                     calculateScores(room);
                 }
             break;
-            case "hand-complete":
-                    // Game State: change the dealerIndex to next player, redeal cards, phase -> "bidding", currentIndex to dealer
-                    // reset tricksPlayed to 0, reset spadesBroken, 
-                    // Players - Give players their new hands, set bid to null, tricksWon back to 0
-            break;
         }
     }
 
@@ -508,53 +499,141 @@ function calculateScores(room) {
     // *3. If a Player/Team bid 0 and are successful they are awarded 100 points, unsuccessfull -100 points.
     // 4. Blind Nil     
     // 5. If a player bid nill- it is only scored based on their INDIVIDUAL tricksTaken
+    
+    //2 Players 1 - 2   2/2
+    //4 Players 1 - 2 - 1 - 2   4/2
+    //6 Players 1 - 2 - 3 - 1 - 2 - 3   6/2
+    const teamsLength = room.players.length / 2;
+    let teamScores = new Array(room.players.length).fill(0);
 
-    room.players.forEach((p) => {
-        // Bid Nil - only based off individual preformance
-        if(p.bid === 0) {
-            p.score += (
-                p.tricksWon > 0 ?
-                 -100 : 100
-            );
-        } else {
-            p.score += (
-                p.tricksWon >= p.bid ? 
-                ((p.bid * 100) + (p.tricksWon - p.bid)) : (p.bid * -100)
-            );
+        for(let i=0; i <= teamsLength; i++) {
+            if(teamsLength === 1) {
+                let p = room.players[i];
+
+                if(p.bid === 0) {
+                    teamScores[i] += (
+                        p.tricksWon > 0 ?
+                        -100 : 100
+                    );
+                } else {
+                    teamScores[i] += (
+                        p.tricksWon >= p.bid ? 
+                        ((p.bid * 100) + (p.tricksWon - p.bid)) : (p.bid * -100)
+                    );
+                }
+            } else {
+                // Grab the team - always going to be a team of two
+                let p1 = room.players[i];
+                let p2 = room.players[i + teamsLength];
+
+                // Calculate Team Bid
+                let teamBid = p1.bid + p2.bid;
+                teamScores[i] += (
+                    (p1.tricksWon + p2.tricksWon) >= teamScores[i] ? 
+                    ((teamBid * 100) + ((p1.tricksWon + p2.tricksWon) - teamBid)) : (teamBid * -100)
+                )
+
+                // Check if either player bid nil
+                if(p1.bid === 0) {
+                    teamScores[i] += (
+                        p1.tricksWon > 0 ? 
+                        -100 : 100
+                    )
+                }
+                if(p2.bid === 0) {
+                    teamScores[i] += (
+                        p2.tricksWon > 0 ?
+                        -100 : 100
+                    )
+                }
+
+                // Set each teammates score to the same thing
+                // Maybe add TeamBid to Player Model
+                p1.score += teamScores[i];
+                p2.score += teamScores[i];
+            }
         }
-    })
 
-    // Check if the game is won
-    const winners = room.players.filter(p => p.score >= 200);
-    if(winners.length >= 2) {
-        let winner = winners[0];
-        winners.forEach(p => {
-            if(p.score === winner.score && p.clientId !== winner.clientId) {
-                // TIE
+        // Check if there are any winners
+        const isWinner = teamScores.flatMap((score, index) => {
+            return (score >= 200 ? index : [])
+        })  
+        console.log(teamScores);
+
+        // Check if there are more than one winner
+        let winnerTeamIndex = isWinner[0];   // Index of all scores that are above 200
+        if(isWinner.length >= 2) {
+            console.log("Multile Winners " + isWinner);
+            // Grab the highest Score then determine if there are more than one instance of it
+            let highestScore = Math.max(...isWinner);
+            let winner = isWinner.filter(score => score === highestScore);
+            if(winner.length > 1) {
+                // Sudden Death
                 room.gameState.phase = "sudden-death";
                 sendGameUpdateToPlayers(room);
-            } else if(p.score > winner.score) {
-                winner = p;
+            } else {
+                winnerTeamIndex = room.players.findIndex(p => p.score === winner);
+                console.log("Multile Winners - Found Winner " + winnerTeamIndex);
+                room.gameState.phase = "game-over";
+                room.gameState.winner = winnerTeamIndex;
+                room.gameState.players.forEach(p => p.ready = false);
+                sendGameUpdateToPlayers(room);
             }
-        })
-
-        if(room.gameState.phase != "sudden-death") {
+        } else if(isWinner.length === 1) {
+            // Winner!
+            console.log("One Winner " + winnerTeamIndex + " " + isWinner);
             room.gameState.phase = "game-over";
-            room.gameState.winner = winner;
+            room.gameState.winner = winnerTeamIndex;
             room.gameState.players.forEach(p => p.ready = false);
             sendGameUpdateToPlayers(room);
+        } else {
+            sendGameUpdateToPlayers(room);
         }
-    } else if(winners.length !== 0) {
-        // There is a winner
-        room.gameState.phase = "game-over";
-        room.gameState.winner = winners[0];
-        room.gameState.players.forEach(p => p.ready = false);
-        console.log("Game Over! Winner: " + room.gameState.winner);
-        sendGameUpdateToPlayers(room);
-    } else {
-        console.log("Hand completed, No winner determined.");
-        sendGameUpdateToPlayers(room);
-    }
+
+    // room.players.forEach((p) => {
+    //     // Bid Nil - only based off individual preformance
+    //     if(p.bid === 0) {
+    //         p.score += (
+    //             p.tricksWon > 0 ?
+    //              -100 : 100
+    //         );
+    //     } else {
+    //         p.score += (
+    //             p.tricksWon >= p.bid ? 
+    //             ((p.bid * 100) + (p.tricksWon - p.bid)) : (p.bid * -100)
+    //         );
+    //     }
+    // })
+
+    // Check if the game is won
+    // const winners = room.players.filter((p, i) => (p.score >= 200));
+    // if(winners.length >= 2) {
+    //     let winner = winners[0];
+    //     winners.forEach(p => {
+    //         if(p.score === winner.score && p.clientId !== winner.clientId) {
+    //             // TIE
+    //             room.gameState.phase = "sudden-death";
+    //             sendGameUpdateToPlayers(room);
+    //         } else if(p.score > winner.score) {
+    //             winner = p;
+    //         }
+    //     })
+
+    //     if(room.gameState.phase != "sudden-death") {
+    //         room.gameState.phase = "game-over";
+    //         room.gameState.winner = winner;
+    //         room.gameState.players.forEach(p => p.ready = false);
+    //         sendGameUpdateToPlayers(room);
+    //     }
+    // } else if(winners.length !== 0) {
+    //     // There is a winner
+    //     room.gameState.phase = "game-over";
+    //     room.gameState.winner = winners[0];
+    //     room.gameState.players.forEach(p => p.ready = false);
+    //     sendGameUpdateToPlayers(room);
+    // } else {
+    //     sendGameUpdateToPlayers(room);
+    // }
 }
 
 const PORT = process.env.PORT || 3000;

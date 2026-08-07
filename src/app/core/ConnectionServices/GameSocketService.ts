@@ -4,16 +4,43 @@ import { BehaviorSubject, Subject } from "rxjs";
 
 import { PlayerModel } from "../models/PlayerModel";
 import { Card } from "../constants/deck";
-
-// export interface Player {
-//   id: string;
-//   name: string;
-//   isHost: boolean;
-// }
  
 export interface GameState {
   started: boolean;
-  [key: string]: any;
+  phase: "waiting" | "bidding" | "playing" | "hand-complete" | "game-over" | "sudden-death";
+  players: PlayerModel[];
+  dealerIndex: number,          // whose turn it is to deal — rotates each hand
+  currentTurnIndex: number,     // index into players[] — whose turn to bid/play
+  currentTrick: Trick[],             // cards played so far this trick: [{ playerId, card }]
+  tricksPlayed: number,         // how many tricks completed this hand (0–13)
+  spadesBroken: boolean,        // has a spade been played yet this hand
+  roundNumber: number,           // which hand of the overall game this is
+  winner: number
+}
+
+export function createDefaultGameState(): GameState {
+    return {
+        started: false,
+        phase: "waiting",
+        players: [],
+        dealerIndex: 0,
+        currentTurnIndex: 0,
+        currentTrick: [],
+        tricksPlayed: 0,
+        spadesBroken: false,
+        roundNumber: 1,
+        winner: -1
+    }
+}
+
+export interface Trick {
+    card: Card;
+    playerToMutate: string;
+}
+
+export interface HandDealtPayload {
+    hand: Card[];
+    gameState: GameState;
 }
 
 export interface RoomCreatedPayload {
@@ -38,21 +65,23 @@ export interface PlayerJoinedPayload {
 export interface PlayerLeftPayload {
     players: PlayerModel[];
     playerName: string;
+    gameState: GameState;
 }
 
 export interface HostLeftPayload {
-    hostLeft: { clientId: string };
+    hostLeft: { socketId: string };
     gameState: GameState;
 }
 
 export interface GameUpdatePayload {
     action: string;
-    payload: any;
+    gameState: GameState;
     from: string;
 }
 
-export interface StateSyncedPayload {
-    gameState: GameState;
+export interface ChatMessage {
+    from: string;
+    message: string;
 }
 
 export interface ErrorPayload {
@@ -64,8 +93,6 @@ export interface ErrorPayload {
 export class GameSocketService implements OnDestroy{
     public socket!: Socket;
     private readonly SERVER_URL = 'http://localhost:3000';
-    // private readonly SERVER_URL = 'http://127.0.0.1:3000';
-
 
     @HostListener('window:beforeunload', ['$event'])
     unloadHandler(event: Event) {
@@ -76,11 +103,12 @@ export class GameSocketService implements OnDestroy{
 
     // Public state streams
     players$ = new BehaviorSubject<PlayerModel[]>([]);
-    gameState$ = new BehaviorSubject<GameState>({ started: false });
+    gameState$ = new BehaviorSubject<GameState>(createDefaultGameState());
     roomCode$ = new BehaviorSubject<string | null>(null);
     connected$ = new BehaviorSubject<boolean>(false);
     hostLeft$ = new BehaviorSubject<string | null>(null);
     myHand$ = new BehaviorSubject<Card[]>([]);
+    chatMessages$ = new Subject<ChatMessage>();
     error$ = new Subject<string>();
 
     // Event streams
@@ -89,9 +117,10 @@ export class GameSocketService implements OnDestroy{
     playerJoined$ = new Subject<PlayerJoinedPayload>();
     playerLeft$ = new Subject<PlayerLeftPayload>();
     gameUpdate$ = new Subject<GameUpdatePayload>();
-    stateSynced$ = new Subject<StateSyncedPayload>();
 
-    constructor(private ngZone: NgZone) {}
+    constructor(private ngZone: NgZone) {
+        
+    }
 
     connect(): void {
         if (this.socket) return;
@@ -122,15 +151,14 @@ export class GameSocketService implements OnDestroy{
     }
 
     // Room Actions
-    createRoom(playerName: string, clientId: string): void {
-        this.socket.emit('create-room', { playerName, clientId });
+    createRoom(playerName: string): void {
+        this.socket.emit('create-room', { playerName });
     }
 
-    joinRoom(roomCode: string, playerName: string, clientId: string): void {
+    joinRoom(roomCode: string, playerName: string): void {
         this.socket.emit('join-room', {
             roomCode: roomCode.toUpperCase(), 
-            playerName,
-            clientId
+            playerName
         });
     }
 
@@ -138,31 +166,28 @@ export class GameSocketService implements OnDestroy{
         this.socket.emit('start-game', { roomCode })
     }
 
-    leaveGame(clientId: string): void {
-        this.socket.emit('leave-game', { clientId })
+    leaveGame(): void {
+        console.log("Attempting to leave game... " + this.socket.id);
+        const socketId = this.socket.id;
+        this.socket.emit('leave-game', { socketId })
     }
 
     // Game Actions
     sendAction(roomCode: string, action: string, payload: any): void {
+        let socketId = this.socket.id;
         this.socket.emit('game-action', { 
             roomCode,
             action,
+            socketId,
             payload
         });
     }
 
-    dealHands(targetPlayerId: string, hand: Card[]): void {
-        this.socket.emit('deal-hand', {
-            targetPlayerId: targetPlayerId,
-            hand
-        })
-    }
-
-    syncState(roomCode: string, gameState: Partial<GameState>): void {
-        this.socket.emit('sync-state', { 
+    sendMessage(roomCode: string, payload: any): void {
+        this.socket.emit('sent-message', {
             roomCode,
-            gameState
-        });
+            payload
+        })
     }
 
     // Helpers
@@ -185,12 +210,9 @@ export class GameSocketService implements OnDestroy{
         })
 
         this.socket.on('host-left', ( data: HostLeftPayload) => {
-            console.log("Host Left");
-            this.ngZone.run(() => {
-                this.hostLeft$.next(data.hostLeft.clientId);
-                console.log(data.hostLeft);
+                this.hostLeft$.next(data.hostLeft.socketId);
                 this.gameState$.next(data.gameState);
-            })
+                console.log(data);
         })
 
         this.socket.on('room-joined', ( data: RoomJoinedPayload) => {
@@ -207,28 +229,24 @@ export class GameSocketService implements OnDestroy{
                 this.players$.next(data.players);
                 this.playerJoined$.next(data);
             });
-            console.log(this.players$);
         });
 
         this.socket.on('player-left', (data: PlayerLeftPayload) => {
-            this.ngZone.run(() => {
+            console.log("player-left");
                 this.players$.next(data.players);
                 this.playerLeft$.next(data);
-            });
+                this.gameState$.next(data.gameState);
         });
 
-        this.socket.on('game-started', ({ gameState }: { gameState: GameState}) => {
-            console.log('game-started received in service:', gameState);
+        this.socket.on('hand-dealt', ({ gameState, hand }: HandDealtPayload) => {
             this.ngZone.run(() => {
+                this.myHand$.next(hand);
                 this.gameState$.next(gameState);
             });
         });
 
         this.socket.on('game-update', (data: GameUpdatePayload) => {
-            console.log('game-update received:', data.action)
-            this.ngZone.run(() => {
-                this.gameUpdate$.next(data);
-            });
+            this.gameState$.next(data.gameState);
         });
 
         this.socket.on('deal-hand', ({ hand }: { hand: Card[] }) => {
@@ -237,22 +255,18 @@ export class GameSocketService implements OnDestroy{
             });
         });
 
-        this.socket.on('state-synced', (data: StateSyncedPayload) => {
-            this.ngZone.run(() => {
-                this.gameState$.next(data.gameState);
-                this.stateSynced$.next(data);
-            });
+        this.socket.on('error', (data: ErrorPayload) => {
+            console.error('Server error:', data.message);
+            this.error$.next(data.message);
         })
 
-        this.socket.on('error', (data: ErrorPayload) => {
-            this.ngZone.run(() => {
-                console.error('Server error:', data.message);
-                this.error$.next(data.message);
-            });
+        this.socket.on('new-message', (data: ChatMessage) => {
+            this.chatMessages$.next(data);
         })
     }
 
     ngOnDestroy(): void {
+        this.leaveGame();
         this.disconnect();
     }
 }

@@ -64,5 +64,6 @@ export class BlackJackGameBoard {
 
  ngOnInit() {
   this.restartGame();
+  console.log(this.BlackJackService.gameDeck());
  }
 }

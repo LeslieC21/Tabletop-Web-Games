@@ -9,54 +9,142 @@
             </div>
         </div>
     <h1 class="player-titles">Player1</h1>
-    @if(!isMyTurn) {<h1 style="color: red;">&uarr;</h1>}
+    <!-- @if(!isMyTurn) {<h1 style="color: red;">&uarr;</h1>} -->
     </section>
-    <main>
-        @for(card of SpadesService.potCards; track $index) {
-            <app-cards [card]="card"/>
+    <main class="deck">
+        @for(trick of currentGameState().currentTrick; track $index) {
+            <app-cards [card]="trick.card"/>
         }
     </main>
     <section class="player">
-        @if(isMyTurn) {<h1 style="color: red;">&darr;</h1>}
+        @if(currentTurnId() === myId) {<h1 style="color: red;">&darr;</h1>}
         <h1 class="player-titles">You</h1>
-        <h3>Team Bid: {{getTeamBid()}}</h3>
-        <h3>Your Score: {{myPlayer?.score}} Hand Score: {{myPlayer?.handScore}}</h3>
+        <h3>Team Bid: {{ myPlayer()?.bid !== -1 ? myPlayer()!.bid : "-" }}</h3>
+        <h3>Your Score: {{ myPlayer()?.score }} Hand Score: {{myPlayer()?.tricksWon }}</h3>
         <div class="card-scroll-wrapper">
             <div class="player-cards">
-                @for(card of myHand; track $index) {
+                @for(card of myHand(); track $index) {
                     <app-cards
                         class="card" 
                         [class.selectedCard]="isSelected(card)"
-                        [card]="card" 
+                        [class.disabledCard]="card.valid === false || currentTurnId() !== myId"
+                        [card]="card"
+                        [isSelected]="isSelected(card)"
+                        [myTurn]="currentTurnId() === myId"
                         (click)="selectCard($event, card)"
                     />
                 }
             </div>
         </div>
         <div class="player-buttons">
-            <button (click)="playCard()" [disabled]="!isMyTurn || !submittedBid">Play Card</button>
+            <button (click)="playCard()" [disabled]="!(currentTurnId() === myId) || selectedCard() == null">Play Card</button>
         </div>
     </section>
-    @if(!submittedBid()) {
-    <button class="showModal-button" (click)="this.showBidModal.update(oldVal => !oldVal)">&#9634;</button>
+    @if(currentGameState().phase == "bidding" && myPlayer()?.bid == -1 && currentTurnId() === myId) {
+        <button class="showModal-button" (click)="this.showBidModal.update(oldVal => !oldVal)">{{ this.showBidModal() ? "Show Cards" : "&#9634;" }}</button>
     }
 </div>
 
-<!-- Modal -->
+<!-- Bidding Modal -->
     @if(showBidModal()) {
     <div class="modal-background">
         <div class="modal-container">
             <header>
-                <h1>Select your <span>bid</span> {{ myPlayer?.name }}</h1>
+                <h1>Select your <span>bid</span> {{ myPlayer()!.name }}</h1>
                 <hr />
             </header>
             <main>
                 <p>A bid is how many rounds of cards you expect to win.</p>
-                <input id="bid" type="number" [(ngModel)]="playerBid" min="0"/>
+                <input id="playerBid" type="number" min="0" value="0"/>
             </main>
             <footer>
                 <button (click)="setPlayerBid()">Submit Bid</button>
             </footer>
+        </div>
+    </div>
+    }
+
+    <!-- Hand Winner/Game Winner Modal -->
+    @if(showScoreModal()) {
+    <div class="modal-background">
+        <div class="modal-container">
+        @if(currentGameState().phase === "hand-complete" || currentGameState().phase === "sudden-death") {
+            <header>
+                <h1>{{ currentGameState().phase === "sudden-death" ? "Sudden Death!" : "Hand Complete!" }}</h1>
+                <h2>
+                    You <span>
+                        <b>{{ (myPlayer()!.score > (myOldGameState().players.find(p => p.socketId === myId))!.score) ? "gained" : "lost" }}</b>
+                    </span> points.
+                </h2>
+                <hr />
+            </header>
+            <main>
+                <p>
+                    You
+                    <span> bid 
+                        <b>{{ myPlayer()!.bid }}</b>
+                    </span> and 
+                    <span>scored
+                        <b>{{ myPlayer()!.tricksWon }}</b>
+                    </span> trick(s)!
+                </p>
+                <p>
+                    <b>
+                        You're new score is <span>{{ myPlayer()!.score }}</span>
+                    </b>
+                </p>
+                <div class="player-scores">
+                    @for(player of currentGameState().players; track player.socketId) {
+                        <fieldset class="player-score">
+                            <details>
+                                <summary>See {{ player.name }}s' Score</summary>
+                                <p>Bid: {{ player.bid }}</p>
+                                <p>Tricks Won: {{ player.tricksWon }}</p>
+                                <p>Score: {{ player.score }}</p>
+                            </details>
+                        </fieldset>
+                    }
+                </div>
+            </main>
+            <hr />
+            <footer>
+                @if(myPlayer()!.isHost) {
+                    <button (click)="playNewHand()">{{ myPlayer()!.isHost ? "Continue" : "Ok" }}</button>
+                    <p>Start the next hand for ALL players.</p>
+                } @else {
+                    <p>Waiting for host to continue...</p>
+                }
+            </footer>
+        } @else if(currentGameState().phase === "game-over") {
+            <header>
+                <h1>
+                    <span>Game Over!</span>
+                </h1>
+                <h2>
+                    <span>The winner is Team {{ currentGameState().winner + 1}}</span>
+                </h2>
+                <hr />
+            </header>
+            <main>
+                <div class="player-scores">
+                    @for(player of myOldGameState().players; track player.socketId) {
+                        <fieldset class="player-score">
+                            <details>
+                                <summary>See {{ player.name }}s' Score</summary>
+                                <p>Bid: {{ player.bid }}</p>
+                                <p>Tricks Won: {{ player.tricksWon }}</p>
+                                <p>Team Score: {{ player.score }}</p>
+                            </details>
+                        </fieldset>
+                    }
+                </div>
+            </main>
+            <hr />
+            <footer style="display: flex; flex-direction: row; justify-content: space-evenly; align-items: center;">
+                 <button (click)="leaveGame()">Exit</button>
+                 <button (click)="playAgain()">Play Again</button>
+            </footer>
+        }
         </div>
     </div>
     }

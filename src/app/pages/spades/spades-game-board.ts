@@ -1,115 +1,111 @@
-import { Component, effect, inject, signal, Output, EventEmitter } from '@angular/core';
+import { Component, effect, inject, signal, Output, EventEmitter, computed, Input, NgZone } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 
 import { Cards } from '../../components/cards/cards';
-import { SpadesService } from '../../core/GameServices/spades';
+// import { SpadesService } from '../../core/GameServices/spades';
+import { GameState, createDefaultGameState } from '../../core/ConnectionServices/GameSocketService';
 import { GameSocketService } from '../../core/ConnectionServices/GameSocketService';
 import { Card } from '../../core/constants/deck';
 import { reset } from 'canvas-confetti';
 
 @Component({
   selector: 'app-spades-game-board',
-  imports: [RouterLink, Cards, FormsModule],
+  imports: [Cards, FormsModule],
   templateUrl: './spades-game-board.html',
   styleUrl: './spades-game-board.css',
 })
 export class SpadesGameBoard {
+  @Input ({ required: true }) roomCode!: string;
   @Output() closeGame = new EventEmitter<void>();
-  SpadesService = inject(SpadesService);
-  gameSocket = inject(GameSocketService);
+  @Output() resetGame = new EventEmitter<void>();
 
-  selectedCard = signal<Card | null>(null);
-  showBidModal = signal<boolean>(false);
-  submittedBid = signal<boolean>(false);
-  playerBid = 0;
-
-  get myId(): string {
-    return this.gameSocket.socketId;
-  }
-
-  get myPlayerIndex(): number {
-    return this.SpadesService.players().findIndex((p) => p.socketId === this.myId);
-  }
-
-  get isMyTurn(): boolean {
-    return this.SpadesService.currentPlayersTurn() === this.myPlayerIndex;
-  }
-
-  get myHand(): Card[] {
-    return this.SpadesService.players().find((p) => p.socketId === this.myId)?.hand ?? [];
-  }
-
-  get myPlayer() {
-    return this.SpadesService.players().find((p) => p.socketId === this.myId);
-  }
-
-  getTeamBid(): number {
-    return (
-      this.SpadesService.teamBids().at(
-        this.gameSocket.players$.value.indexOf(this.myPlayer!) % 2,
-      ) ?? 0
-    );
-  }
-
-  constructor() {
-    effect(() => {
-      const round = this.SpadesService.gameRounds();
-
-      if (round === 0 && this.isMyTurn) {
-        this.submittedBid.set(false);
-        setTimeout(() => {
-          // Prompt the user to select their bid!
-          this.showBidModal.set(this.myPlayer?.showModal!);
-          this.submittedBid.set(true);
-        }, 5000);
-      }
-
-      // CAUSES INFINITE LOOP AFTER LEAVING GAME AND 'REJOINING'
-      if (this.myHand.length === 0 && this.SpadesService.hasDelt)
-        this.SpadesService.calculateScores();
+  currentGameState = signal<GameState>(createDefaultGameState());
+  myOldGameState = signal<GameState>(createDefaultGameState());
+    currentTurnId = computed(() => {
+      let s = this.currentGameState().currentTurnIndex;
+      return this.currentGameState().players.at(s)?.socketId;
+    })
+    myPlayer = computed(() => {
+      let s =  this.gameSocket.socketId;
+      console.log(s);
+      return this.currentGameState().players.find(p => p.socketId == s);
+    })
+    myHand = computed(() => {
+      return this.myPlayer()!.hand;
     });
-  }
+
+    selectedCard = signal<Card | null>(null);
+    showScoreModal = signal<boolean>(false);
+    showBidModal = signal<boolean>(false);
+  
+    constructor(private gameSocket: GameSocketService) {
+      this.gameSocket.gameState$.subscribe((state) => {
+        if(state.phase === "hand-complete" || state.phase === "game-over" || state.phase === "sudden-death") {
+          this.showScoreModal.set(true);
+        } else if(this.showScoreModal() && state.phase === "bidding") {
+          this.showScoreModal.set(false);
+        }
+
+        if(state.phase != this.currentGameState().phase && state.phase !== "waiting") {
+          this.myOldGameState.set(state);
+        }
+
+        this.currentGameState.update(s => ({ ...state }));
+        this.selectedCard.set(null);
+
+        if(this.currentGameState().phase == "bidding"&& 
+          this.myPlayer()?.bid == -1 && 
+          this.currentTurnId() === this.myId) {
+          this.showBidModal.set(true);
+        } 
+      });
+    }
+
+    get myId(): string {
+      return this.gameSocket.socketId;
+    }
 
   leaveGame() {
-    console.log("Leave game bottom")
-    this.SpadesService.resetGame();
+    this.showScoreModal.set(false);
     this.closeGame.emit();
   }
 
-  ngOnInit() {
-    if (this.gameSocket.isHost(this.gameSocket.players$.value)) {
-      this.SpadesService.initPlayers();
-      this.SpadesService.dealDeck();
-      this.SpadesService.syncPublicState();
-    }
-  }
-
-  restartGame() {
-    this.SpadesService.resetGame();
+  playAgain() {
+    this.gameSocket.sendAction(this.roomCode, 'mark-ready', {});
+    this.resetGame.emit();
   }
 
   setPlayerBid() {
+    const playerBid = Number((document.getElementById('playerBid') as HTMLInputElement).value);
+    
+    // Send value of the bid to the server
+    this.gameSocket.sendAction(this.roomCode, 'submit-playerBid', { bid: playerBid });
+    this.myOldGameState.set(this.currentGameState());
     this.showBidModal.set(false);
-    this.submittedBid.set(true);
-    this.SpadesService.setPlayerBid(this.playerBid);
   }
 
   selectCard(event: Event, card: Card) {
-    event.preventDefault();
     this.selectedCard.set(card);
+    console.log(this.selectedCard())
   }
 
   isSelected(card: Card): boolean {
     const selected = this.selectedCard();
-    if (!selected) return false;
+    if(!selected)
+      return false;
+
     return selected.rank === card.rank && selected.suit.name === card.suit.name;
   }
 
   playCard() {
-    if (!this.selectedCard() || !this.isMyTurn) return;
+    this.gameSocket.sendAction(this.roomCode, 'play-card', { card: this.selectedCard() })
+  }
 
-    this.SpadesService.playCard(this.selectedCard()!, this.myId);
-    this.selectedCard.set(null);
+  playNewHand() {
+    this.showScoreModal.set(false);
+    if(this.myPlayer()!.isHost) {
+      this.gameSocket.sendAction(this.roomCode, 'new-hand', {});
+    }
   }
 }

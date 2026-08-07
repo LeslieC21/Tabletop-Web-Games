@@ -2,7 +2,7 @@
     <div class="container" [class.is-shown]="!isCardHidden">
                 <div class="card-back"></div>
 
-                <div class="card-front">
+                <button class="card-front" [class.is-invalid]="!card.valid || !myTurn" [class.is-selected]="isSelected">
                     <section class="card-suit-top">
                         <h1>{{ card.rank }}</h1>
                         <img 
@@ -23,6 +23,6 @@
                             alt="Playing Card {{ card.suit.name }}" 
                         />
                     </section>
-                </div>
-    </div>
+                </button>
+            </div>
 </div>

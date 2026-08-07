@@ -51,7 +51,7 @@
                                     <legend>Player List ({{ players().length }})</legend>
                                 <ul>
                                     @for(p of players(); track $index) {
-                                        <li>
+                                        <li [class.isReady]="!p.ready">
                                         @if(p.isHost) {
                                             <span> (Host) </span>
                                         }
@@ -68,7 +68,7 @@
                             @if(amHost() && !gameStarted()) {
                                 <button
                                 (click)="startGame()"
-                                [disabled]="players().length < 2"
+                                [disabled]="players().length < 2 || players().length % 2 === 1 || players().some(p => !p.ready)"
                                 class="play-button">
                                     Start Game
                                 </button>
@@ -100,9 +100,18 @@
 </div>
 }
 
+<div class="chat-box-container" id="chat-box-container" #chatBoxContainer [class.hide-chat]="hideChat()">
+    <div class="chat-messages">
+        @for(msg of chatMessages(); track $index) {
+            <p>{{ msg.from }}: {{ msg.message }}</p>
+        }
+    </div>
+    <input type="text" id="chat-box" class="chat-box" placeholder="Type a message..." #myInput (keyup.enter)="sendMessage(myInput)"/>
+</div>
+
 @if((gameStarted())) {
     <div class="game-area">
-            <app-spades-game-board (closeGame)="leaveRoom()"/>
+            <app-spades-game-board (closeGame)="leaveRoom()" (resetGame)="resetGame()" [roomCode]="roomCode ?? joinCode"/>
     </div>
 }
 
@@ -123,11 +132,11 @@
 </div>
 }
 
-@if(showHostLeft() !== null && showHostLeft() !== clientId) {
-    <div class="modal">
-    <div class="modal-container">
+@if(showHostLeft() !== null && showHostLeft() !== gameSocket.socketId) {
+<div class="modal">
+    <div class="modal-container2">
         <div class="modal-title">
-            <h1>The Host has left the game</h1>
+            <h1>A Player has left the game</h1>
         </div>
         <div class="modal-buttons">
             <button class="modal-exit-button" (click)="closeHostLeftModal()">Ok</button>

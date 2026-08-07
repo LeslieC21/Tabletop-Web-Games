@@ -12,5 +12,7 @@ export class Cards {
   @Input({ required: true}) card!: Card;
   @Input () isCardHidden: boolean = false;
   @Input () isFlipped: boolean = false;
+  @Input () isSelected: boolean = false;
+  @Input () myTurn: boolean = true;
   @Input() displayManyCards: boolean = true;
 }

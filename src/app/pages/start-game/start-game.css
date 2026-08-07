@@ -150,6 +150,19 @@ ul {
     border: 2px solid #305a4a;
 }
 
+.modal-container2 {
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    align-items: center;
+    background-color: white;
+    padding: 1rem;
+    border-radius: 5px;
+    text-align: center;
+    box-shadow: 5px 5px 5px black;
+    border: 2px solid #305a4a;
+}
+
 .modal-title {
     font-family: 'Gagalin', sans-serif;
     letter-spacing: 3px;
@@ -238,4 +251,44 @@ li {
     letter-spacing: 3px;
     margin-top: 0.5em;
     margin-bottom: 0.5em;
+}
+
+.isReady {
+    color: rgb(150, 150, 150);
+}
+
+.chat-box-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: end;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    background-color: rgba(134, 134, 134, 0.301);
+    width: 40%;
+    max-height: 35%;
+    z-index: 500;
+    overflow: hidden;
+}
+
+.chat-box { 
+    background-color: rgba(255, 255, 255, 0.466);
+    border: none;
+    margin: 0 .5rem .5rem .5rem;
+    padding: .3rem;
+}
+
+.chat-messages {
+    margin: .5rem;
+    height: auto;
+    overflow-y: scroll;
+    overflow-x: visible;
+}
+
+.hide-chat {
+    display: none;
+}
+
+b {
+    color: rgb(85, 17, 17);
 }

@@ -1,0 +1,6 @@
+When working with the database - We need to keep the project as the source of truth.
+
+So change it on the manager, then right click the project that contains the database (CSIOnlinePortal.Database) and click Schema Compare.  
+At first the db should be on the left, go through it and check/uncheck what you want to change
+click update then swap their sides to ensure it looks right.
+Finally run the program that will update the .DB project (the models from entity framework).

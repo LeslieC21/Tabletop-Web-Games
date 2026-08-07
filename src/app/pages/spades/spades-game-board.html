@@ -73,7 +73,7 @@
                 <h1>{{ currentGameState().phase === "sudden-death" ? "Sudden Death!" : "Hand Complete!" }}</h1>
                 <h2>
                     You <span>
-                        <b>{{ (myPlayer()!.score > (myOldGameState().players.find(p => p.clientId === myId))!.score) ? "gained" : "lost" }}</b>
+                        <b>{{ (myPlayer()!.score > (myOldGameState().players.find(p => p.socketId === myId))!.score) ? "gained" : "lost" }}</b>
                     </span> points.
                 </h2>
                 <hr />
@@ -94,7 +94,7 @@
                     </b>
                 </p>
                 <div class="player-scores">
-                    @for(player of currentGameState().players; track player.clientId) {
+                    @for(player of currentGameState().players; track player.socketId) {
                         <fieldset class="player-score">
                             <details>
                                 <summary>See {{ player.name }}s' Score</summary>
@@ -121,19 +121,19 @@
                     <span>Game Over!</span>
                 </h1>
                 <h2>
-                    <span>The winner is team {{ currentGameState().winner }}</span>
+                    <span>The winner is Team {{ currentGameState().winner + 1}}</span>
                 </h2>
                 <hr />
             </header>
             <main>
                 <div class="player-scores">
-                    @for(player of myOldGameState().players; track player.clientId) {
+                    @for(player of myOldGameState().players; track player.socketId) {
                         <fieldset class="player-score">
                             <details>
                                 <summary>See {{ player.name }}s' Score</summary>
                                 <p>Bid: {{ player.bid }}</p>
                                 <p>Tricks Won: {{ player.tricksWon }}</p>
-                                <p>Score: {{ player.score }}</p>
+                                <p>Team Score: {{ player.score }}</p>
                             </details>
                         </fieldset>
                     }

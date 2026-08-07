@@ -196,3 +196,7 @@ button:hover {
 summary:hover {
     cursor: pointer;
 }
+
+.winner {
+    border: 2px solid red;
+}

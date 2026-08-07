@@ -15,7 +15,7 @@ export interface GameState {
   tricksPlayed: number,         // how many tricks completed this hand (0–13)
   spadesBroken: boolean,        // has a spade been played yet this hand
   roundNumber: number,           // which hand of the overall game this is
-  winner: PlayerModel | null
+  winner: number
 }
 
 export function createDefaultGameState(): GameState {
@@ -29,7 +29,7 @@ export function createDefaultGameState(): GameState {
         tricksPlayed: 0,
         spadesBroken: false,
         roundNumber: 1,
-        winner: null
+        winner: -1
     }
 }
 
@@ -69,7 +69,7 @@ export interface PlayerLeftPayload {
 }
 
 export interface HostLeftPayload {
-    hostLeft: { clientId: string };
+    hostLeft: { socketId: string };
     gameState: GameState;
 }
 
@@ -118,19 +118,8 @@ export class GameSocketService implements OnDestroy{
     playerLeft$ = new Subject<PlayerLeftPayload>();
     gameUpdate$ = new Subject<GameUpdatePayload>();
 
-    protected readonly clientId: string;
     constructor(private ngZone: NgZone) {
-        const existingId = localStorage.getItem("clientId")
-        if(existingId) {
-            this.clientId = existingId;
-        } else {
-            this.clientId = crypto.randomUUID();
-            localStorage.setItem("clientId", this.clientId);
-        }
-    }
-
-    getClientId(): string {
-        return this.clientId;
+        
     }
 
     connect(): void {
@@ -163,16 +152,13 @@ export class GameSocketService implements OnDestroy{
 
     // Room Actions
     createRoom(playerName: string): void {
-        let clientId = this.clientId;
-        this.socket.emit('create-room', { playerName, clientId });
+        this.socket.emit('create-room', { playerName });
     }
 
     joinRoom(roomCode: string, playerName: string): void {
-        let clientId = this.clientId;
         this.socket.emit('join-room', {
             roomCode: roomCode.toUpperCase(), 
-            playerName,
-            clientId
+            playerName
         });
     }
 
@@ -181,18 +167,18 @@ export class GameSocketService implements OnDestroy{
     }
 
     leaveGame(): void {
-        let clientId = this.getClientId();
-        console.log("Attempting to leave game... " + clientId);
-        this.socket.emit('leave-game', { clientId })
+        console.log("Attempting to leave game... " + this.socket.id);
+        const socketId = this.socket.id;
+        this.socket.emit('leave-game', { socketId })
     }
 
     // Game Actions
     sendAction(roomCode: string, action: string, payload: any): void {
-        let clientId = this.clientId;
+        let socketId = this.socket.id;
         this.socket.emit('game-action', { 
             roomCode,
             action,
-            clientId,
+            socketId,
             payload
         });
     }
@@ -224,7 +210,7 @@ export class GameSocketService implements OnDestroy{
         })
 
         this.socket.on('host-left', ( data: HostLeftPayload) => {
-                this.hostLeft$.next(data.hostLeft.clientId);
+                this.hostLeft$.next(data.hostLeft.socketId);
                 this.gameState$.next(data.gameState);
                 console.log(data);
         })

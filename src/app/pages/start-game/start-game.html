@@ -68,7 +68,7 @@
                             @if(amHost() && !gameStarted()) {
                                 <button
                                 (click)="startGame()"
-                                [disabled]="players().length < 2 || players().some(p => !p.ready)"
+                                [disabled]="players().length < 2 || players().length % 2 === 1 || players().some(p => !p.ready)"
                                 class="play-button">
                                     Start Game
                                 </button>
@@ -132,7 +132,7 @@
 </div>
 }
 
-@if(showHostLeft() !== null && showHostLeft() !== gameSocket.getClientId()) {
+@if(showHostLeft() !== null && showHostLeft() !== gameSocket.socketId) {
 <div class="modal">
     <div class="modal-container2">
         <div class="modal-title">

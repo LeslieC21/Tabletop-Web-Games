@@ -57,7 +57,7 @@ function sanitizeGameStateFor(gameState, forPlayerId) {
         ...gameState,
         players: (gameState.players).map((p) => ({
             ...p,
-            hand: p.clientId === forPlayerId ? p.hand : undefined,
+            hand: p.socketId === forPlayerId ? p.hand : undefined,
             handSize: p.hand.length
         }))
     };
@@ -115,12 +115,11 @@ app.get("/room/:code", (req, res) => {
 
 io.on('connection', (socket) => {
     // CREATE ROOM
-    socket.on("create-room", ({ playerName, clientId }) => {
+    socket.on("create-room", ({ playerName }) => {
         const roomCode = generateRoomCode();
         rooms[roomCode] = {
             code: roomCode,
             players: [{
-                clientId: clientId,
                 socketId: socket.id, 
                 name: playerName, 
                 isHost: true,
@@ -147,7 +146,7 @@ io.on('connection', (socket) => {
 
         socket.join(roomCode);
         socket.data.roomCode = roomCode;
-        socket.data.clientId = clientId;
+        socket.data.socketId = socket.id;
 
         // console.log(`Room created: ${roomCode} by ${playerName}`);
 
@@ -158,7 +157,7 @@ io.on('connection', (socket) => {
     });
 
     // JOIN ROOM
-    socket.on('join-room', ({ roomCode, playerName, clientId }) => {
+    socket.on('join-room', ({ roomCode, playerName }) => {
         const room = rooms[roomCode];
 
         if(!room) {
@@ -172,7 +171,6 @@ io.on('connection', (socket) => {
         }
 
         room.players.push({
-            clientId: clientId,
                 socketId: socket.id, 
                 name: playerName, 
                 isHost: false,
@@ -186,7 +184,7 @@ io.on('connection', (socket) => {
 
         socket.join(roomCode);
         socket.data.roomCode = roomCode;
-        socket.data.clientId = clientId;
+        socket.data.socketId = socket.id;
 
         // Tell the joining player the current state
         socket.emit("room-joined", {
@@ -227,7 +225,7 @@ io.on('connection', (socket) => {
         room.players.forEach((player) => {
             io.to(player.socketId).emit("hand-dealt", {
                 hand: player.hand,
-                gameState: sanitizeGameStateFor(room.gameState, player.clientId)
+                gameState: sanitizeGameStateFor(room.gameState, player.socketId)
             })
         });
     });
@@ -235,11 +233,11 @@ io.on('connection', (socket) => {
 
 
     // GAME ACTION (any player)
-    socket.on('game-action', ({ roomCode, action, clientId, payload }) => {
+    socket.on('game-action', ({ roomCode, action, socketId, payload }) => {
         const room = rooms[roomCode];
         if(!room) return;
         
-        let playerToMutate = room.players.find(p => p.clientId === clientId);
+        let playerToMutate = room.players.find(p => p.socketId === socketId);
 
         switch(action) {
             case "submit-playerBid":
@@ -259,12 +257,12 @@ io.on('connection', (socket) => {
                     card.rank === payload.card.rank && 
                     card.suit.name === payload.card.suit.name
                 );
-                let addTrick = { card: payload.card, cardOwner: playerToMutate.clientId }
+                let addTrick = { card: payload.card, cardOwner: playerToMutate.socketId }
                 room.gameState.currentTrick.push(addTrick);
                 playerToMutate.hand.splice(playedCardIndex, 1);
                 room.gameState.players.map((player) => ({
                     ...player,
-                    player: player.clientId == playerToMutate.clientId ? playerToMutate : player
+                    player: player.socketId == playerToMutate.socketId ? playerToMutate : player
                 }))
                 endTurn(room);
                 sendGameUpdateToPlayers(room);
@@ -292,7 +290,7 @@ io.on('connection', (socket) => {
                 // Mark a specific player as ready
                 // Reset Game as well
                 room.gameState.players.forEach(p => {
-                    p.ready = p.clientId === clientId ? true : p.ready;
+                    p.ready = p.socketId === socketId ? true : p.ready;
                     p.hand = [];
                     p.handSize = 0;
                     p.bid = -1;
@@ -314,7 +312,7 @@ io.on('connection', (socket) => {
                 // Send GameUpdate to only the players that have readied
                 readiedPlayers.forEach(p => {
                     io.to(p.socketId).emit("game-update", {
-                    gameState: sanitizeGameStateFor(room.gameState, clientId)
+                        gameState: sanitizeGameStateFor(room.gameState, p.socketId)
                     })
                 })
             break;
@@ -334,7 +332,7 @@ io.on('connection', (socket) => {
     })
 
     // Disconnect from GAME not socket
-    socket.on("leave-game", ( clientId ) => {
+    socket.on("leave-game", ( socketId ) => {
         const { roomCode, playerName } = socket.data;
 
         // If room doesnt exist return
@@ -347,7 +345,7 @@ io.on('connection', (socket) => {
 
         // Grab list of players that are still in the game & player that left
         room.players = room.players.filter((p) => p.socketId !== socket.id);
-        room.gameState.players = room.players.filter(p => p.clientId !== clientId)
+        room.gameState.players = room.players.filter(p => p.socketId !== socketId)
         const socketIds = room.players.map((p) => p.socketId);
 
         // If there are no players left - delete the room
@@ -357,7 +355,7 @@ io.on('connection', (socket) => {
             // If the game is being played - stop the game.
             if(room.gameState.phase !== "waiting" && room.gameState.phase !== "game-over") {
                 io.to(socketIds).emit("host-left", {
-                    hostLeft: clientId,
+                    hostLeft: socketId,
                     gameState: { started: false },
                 })
                 delete rooms[roomCode];
@@ -381,7 +379,7 @@ io.on('connection', (socket) => {
 function sendGameUpdateToPlayers(room) {
     room.players.forEach((player) => {
         io.to(player.socketId).emit("game-update", {
-            gameState: sanitizeGameStateFor(room.gameState, player.clientId)
+            gameState: sanitizeGameStateFor(room.gameState, player.socketId)
         })
     })
 }
@@ -417,7 +415,7 @@ function endTurn(room) {
 
                 let winnerId = room.gameState.currentTrick.find(p => p.card.suit.name === highestSuitPlayed && p.card.value == highestCard).cardOwner;
                 // 1. Give winner the point (tricksWon)
-                let winnerIndex = room.gameState.players.findIndex(p => p.clientId === winnerId);
+                let winnerIndex = room.gameState.players.findIndex(p => p.socketId === winnerId);
                 room.gameState.players[winnerIndex].tricksWon += 1;
 
                 // 2. Empty currentTrick
@@ -506,21 +504,34 @@ function calculateScores(room) {
     const teamsLength = room.players.length / 2;
     let teamScores = new Array(room.players.length).fill(0);
 
-        for(let i=0; i <= teamsLength; i++) {
+        for(let i=0; i < teamsLength; i++) {
             if(teamsLength === 1) {
-                let p = room.players[i];
+                let p1 = room.players[i];
+                let p2 = room.players[i + teamsLength];
 
-                if(p.bid === 0) {
+                if(p1.bid === 0 || p2.bid === 0) {
                     teamScores[i] += (
-                        p.tricksWon > 0 ?
+                        p1.tricksWon > 0 ?
+                        -100 : 100
+                    );
+                    teamScores[i + teamsLength] += (
+                        p2.tricksWon > 0 ?
                         -100 : 100
                     );
                 } else {
                     teamScores[i] += (
-                        p.tricksWon >= p.bid ? 
-                        ((p.bid * 100) + (p.tricksWon - p.bid)) : (p.bid * -100)
+                        p1.tricksWon >= p1.bid ? 
+                        ((p1.bid * 100) + (p1.tricksWon - p1.bid)) : (p1.bid * -100)
+                    );
+                    teamScores[i + teamsLength] += (
+                        p2.tricksWon >= p2.bid ? 
+                        ((p2.bid * 100) + (p2.tricksWon - p2.bid)) : (p2.bid * -100)
                     );
                 }
+                
+
+                p1.score += teamScores[i];
+                p2.score += teamScores[i + teamsLength];
             } else {
                 // Grab the team - always going to be a team of two
                 let p1 = room.players[i];
@@ -558,15 +569,15 @@ function calculateScores(room) {
         const isWinner = teamScores.flatMap((score, index) => {
             return (score >= 200 ? index : [])
         })  
-        console.log(teamScores);
+        console.log(isWinner);
 
         // Check if there are more than one winner
         let winnerTeamIndex = isWinner[0];   // Index of all scores that are above 200
         if(isWinner.length >= 2) {
             console.log("Multile Winners " + isWinner);
             // Grab the highest Score then determine if there are more than one instance of it
-            let highestScore = Math.max(...isWinner);
-            let winner = isWinner.filter(score => score === highestScore);
+            let highestScore = Math.max(...teamScores);
+            let winner = teamScores.filter(score => score === highestScore);
             if(winner.length > 1) {
                 // Sudden Death
                 room.gameState.phase = "sudden-death";

@@ -1,9 +1,12 @@
 CURRENT BUGS: 
 	1. Allow players to refresh page and still be in the game
 	2. Both players playing again doesn't work.
+	3. Scoring for Ties is bugged.
+	4. You can start the game with odd number of players.
 	
 
 IDEAS FOR FUTURE: 
+*** Add A Way That shows players all bids and scores.
 	1. Implement a 'hard' mode that says if you get 10 bags (over the whole game) you are deducted 100 points.
 	2. Blind Nil (Bidding Nil before looking at your cards doubles the stakes to +200 or -200 points.)
 	3. Implement a 'Store' so that Start-game and spades-game-board and other can share the subscription.

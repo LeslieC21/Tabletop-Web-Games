@@ -17,7 +17,7 @@ interface cardPot {
 export class SpadesService {
   currentGameState = signal<GameState>(createDefaultGameState());
   currentTurnIndex = computed(() => this.currentGameState().currentTurnIndex)
-  myHand = computed(() => this.currentGameState().players.find(p => p.clientId === this.gameSocket.getClientId())?.hand ?? []);
+  myHand = computed(() => this.currentGameState().players.find(p => p.socketId === this.gameSocket.socketId)?.hand ?? []);
 
   constructor(private gameSocket: GameSocketService) {
     this.gameSocket.gameState$.subscribe((state) => {

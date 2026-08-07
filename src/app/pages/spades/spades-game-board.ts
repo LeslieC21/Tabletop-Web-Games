@@ -24,11 +24,12 @@ export class SpadesGameBoard {
   myOldGameState = signal<GameState>(createDefaultGameState());
     currentTurnId = computed(() => {
       let s = this.currentGameState().currentTurnIndex;
-      return this.currentGameState().players.at(s)?.clientId;
+      return this.currentGameState().players.at(s)?.socketId;
     })
     myPlayer = computed(() => {
-      let s =  this.gameSocket.getClientId();
-      return this.currentGameState().players.find(p => p.clientId == s);
+      let s =  this.gameSocket.socketId;
+      console.log(s);
+      return this.currentGameState().players.find(p => p.socketId == s);
     })
     myHand = computed(() => {
       return this.myPlayer()!.hand;
@@ -40,8 +41,6 @@ export class SpadesGameBoard {
   
     constructor(private gameSocket: GameSocketService) {
       this.gameSocket.gameState$.subscribe((state) => {
-        // console.log("Game State Updated to: ");
-        // console.log(state);
         if(state.phase === "hand-complete" || state.phase === "game-over" || state.phase === "sudden-death") {
           this.showScoreModal.set(true);
         } else if(this.showScoreModal() && state.phase === "bidding") {
@@ -64,7 +63,7 @@ export class SpadesGameBoard {
     }
 
     get myId(): string {
-      return this.gameSocket.getClientId();
+      return this.gameSocket.socketId;
     }
 
   leaveGame() {

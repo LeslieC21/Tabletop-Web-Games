@@ -76,7 +76,7 @@ button:hover {
 
 .card-suit-top > h1, .card-suit-bot > h1 {
     text-align: center;
-    max-width: 20px;
+    max-width: 100%;
     padding: 0;
     margin: auto;
     font-size: 36px;
@@ -144,6 +144,8 @@ ul {
     padding: 1rem;
     border-radius: 5px;
     width: 60%;
+    max-width: 800px;
+    min-width: 0;
     height: 70%;
     text-align: center;
     box-shadow: 5px 5px 5px black;
@@ -170,10 +172,15 @@ ul {
 }
 
 .modal-body {
-    width: 100%;
+    max-width: 100%;
+    min-width: 0;
     overflow-y: auto;
+    overflow-wrap: break-word;
+    word-break: break-word;
     border: 2px solid #305a4a;
     border-radius: 10px;
+    box-sizing: border-box;
+    padding: 0.5rem;
 }
 
 .modal-exit-button {

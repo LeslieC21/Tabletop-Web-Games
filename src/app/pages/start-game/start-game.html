@@ -3,9 +3,9 @@
     <button class="quit" (click)="routeToHome()">Quit</button>
     <div class="card-container">
         <section class="card-suit-top">
-            <h1>1</h1>
+            <h1>{{ cardNumber }}</h1>
             <img 
-                src="Spades.png" 
+                [src]="cardSuit"
                 alt="Playing Card Spade" 
                 height="65px" 
                 width="65px"
@@ -88,9 +88,9 @@
             }
         </div>
         <section class="card-suit-bot">
-            <h1>1</h1>
+            <h1>{{ cardNumber }}</h1>
             <img 
-                src="Spades.png" 
+                [src]="cardSuit" 
                 alt="Playing Card Spade" 
                 height="65px" 
                 width="65px"
@@ -111,7 +111,11 @@
 
 @if((gameStarted())) {
     <div class="game-area">
-            <app-spades-game-board (closeGame)="leaveRoom()" (resetGame)="resetGame()" [roomCode]="roomCode ?? joinCode"/>
+         @if (gameComponent){
+            <ng-container #gameOutlet></ng-container>
+         } @else {
+            <p>Unsupported game: {{ gameTitle }}</p>
+         }
     </div>
 }
 
@@ -122,8 +126,8 @@
         <div class="modal-title">
             <h1>How to Play {{gameTitle}}</h1>
         </div>
-        <div class="modal-body">
-            <div [innerHTML]="instructions | markToHtml"></div>
+        <div class="modal-body" [innerHTML]="instructions | markToHtml">
+            <!-- <div [innerHTML]="instructions | markToHtml"></div> -->
         </div>
         <div class="modal-buttons">
             <button class="modal-exit-button" (click)="showInstructions.set(false)">Ok</button>

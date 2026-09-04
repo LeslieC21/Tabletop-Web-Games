@@ -1,17 +1,13 @@
 <div class="container">
     <h1>Table-top Web Games!</h1>
     <ul>
-        <li>
-            <button [routerLink]="['/GameLobby', 'Blackjack']">
-                <span>Blackjack</span>
-                <img src="/Blackjack-cards.png" alt="playing cards" height="150px" width="150px"/>
-            </button>
-        </li>
-        <li>
-            <button [routerLink]="['/GameLobby', 'Spades']">
-                <span>Spades</span>
-                <img src="/Blackjack-cards.png" alt="playing cards" height="150px" width="150px"/>
-            </button>
-        </li>
+        @for(game of Games; track $index) {
+            <li>
+                <button [routerLink]="['/GameLobby', `${game.title}`]">
+                    <span>{{ game.title }}</span>
+                    <img src="/Blackjack-cards.png" alt="playing card" height="150px" width="150px"/>
+                </button>
+            </li>
+        }
     </ul>
 </div>

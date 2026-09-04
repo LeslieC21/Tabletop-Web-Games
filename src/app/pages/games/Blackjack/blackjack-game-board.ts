@@ -1,9 +1,9 @@
-import { Component, inject, effect, signal } from '@angular/core';
+import { Component, inject, effect, signal, EventEmitter, Input, Output } from '@angular/core';
 import { RouterLink } from '@angular/router'
 import confetti from 'canvas-confetti';
 
-import { BlackJackService } from '../../core/GameServices/blackjack';
-import { Cards } from '../../components/cards/cards';
+import { BlackJackService } from '../../../core/GameServices/blackjack';
+import { Cards } from '../../../components/cards/cards';
 
 @Component({
   selector: 'app-blackjack-game-board',
@@ -12,6 +12,10 @@ import { Cards } from '../../components/cards/cards';
   styleUrl: './blackjack-game-board.css',
 })
 export class BlackJackGameBoard {
+  @Input ({ required: true }) roomCode!: string;
+  @Output() closeGame = new EventEmitter<void>();
+  @Output() resetGame = new EventEmitter<void>();
+  
   BlackJackService = inject(BlackJackService);
   currentPlayer = this.BlackJackService.currentPlayersTurn;
   showWinner = signal<boolean>(false);

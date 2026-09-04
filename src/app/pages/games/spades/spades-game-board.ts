@@ -2,12 +2,11 @@ import { Component, effect, inject, signal, Output, EventEmitter, computed, Inpu
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 
-import { Cards } from '../../components/cards/cards';
+import { Cards } from '../../../components/cards/cards';
 // import { SpadesService } from '../../core/GameServices/spades';
-import { GameState, createDefaultGameState } from '../../core/ConnectionServices/GameSocketService';
-import { GameSocketService } from '../../core/ConnectionServices/GameSocketService';
-import { Card } from '../../core/constants/deck';
-import { reset } from 'canvas-confetti';
+import { GameState, createDefaultGameState } from '../../../core/ConnectionServices/GameSocketService';
+import { GameSocketService } from '../../../core/ConnectionServices/GameSocketService';
+import { Card } from '../../../core/constants/deck';
 
 @Component({
   selector: 'app-spades-game-board',
@@ -41,13 +40,14 @@ export class SpadesGameBoard {
   
     constructor(private gameSocket: GameSocketService) {
       this.gameSocket.gameState$.subscribe((state) => {
+
         if(state.phase === "hand-complete" || state.phase === "game-over" || state.phase === "sudden-death") {
           this.showScoreModal.set(true);
         } else if(this.showScoreModal() && state.phase === "bidding") {
           this.showScoreModal.set(false);
         }
 
-        if(state.phase != this.currentGameState().phase && state.phase !== "waiting") {
+        if(state.phase !== this.currentGameState().phase && state.phase === "game-over" || state.phase === "sudden-death") {
           this.myOldGameState.set(state);
         }
 

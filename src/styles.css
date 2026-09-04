@@ -2,3 +2,12 @@ html, body {
     margin: 0;
     padding: 0;
 }
+
+.modal-body h1 { font-family: 'Gagalin', sans-serif; font-size: 1.4rem; margin: 1rem 0 0.5rem; }
+.modal-body h2 { font-size: 1.1rem; border-bottom: 1px solid #305a4a; padding-bottom: 0.25rem; margin: 1.25rem 0 0.5rem; }
+.modal-body p  { margin: 0.5rem 0; line-height: 1.5; text-align: left; }
+.modal-body ul, .modal-body ol { text-align: left; padding-left: 1.5rem; margin: 0.5rem 0; }
+.modal-body li { margin: 0.25rem 0; }
+.modal-body strong { color: #305a4a; }
+.modal-body hr { border: none; border-top: 1px solid #ccc; margin: 1rem 0; }
+.modal-body a { color: #305a4a; text-decoration: underline; }

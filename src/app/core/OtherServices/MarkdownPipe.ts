@@ -6,6 +6,9 @@ import { marked } from 'marked'
 export class MarkdownPipe implements PipeTransform {
     transform(value: string): any {
         if(!value) return '';
-        return marked.parse(value);
+
+        // Since I dented the strings so its more readable- we have to undent it to then feed it to html
+        const dedented = value.split('\n').map(line => line.replace(/^ {1,}/, '')).join('\n');
+        return marked.parse(dedented);
     }
 }

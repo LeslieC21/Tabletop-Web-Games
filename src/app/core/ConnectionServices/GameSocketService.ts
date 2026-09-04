@@ -151,8 +151,8 @@ export class GameSocketService implements OnDestroy{
     }
 
     // Room Actions
-    createRoom(playerName: string): void {
-        this.socket.emit('create-room', { playerName });
+    createRoom(playerName: string, gameType: string): void {
+        this.socket.emit('create-room', { playerName, gameType });
     }
 
     joinRoom(roomCode: string, playerName: string): void {
@@ -212,6 +212,7 @@ export class GameSocketService implements OnDestroy{
         this.socket.on('host-left', ( data: HostLeftPayload) => {
                 this.hostLeft$.next(data.hostLeft.socketId);
                 this.gameState$.next(data.gameState);
+                console.log("HOST LEFT");
                 console.log(data);
         })
 
@@ -236,6 +237,7 @@ export class GameSocketService implements OnDestroy{
                 this.players$.next(data.players);
                 this.playerLeft$.next(data);
                 this.gameState$.next(data.gameState);
+                console.log("PLAYER LEFT");
         });
 
         this.socket.on('hand-dealt', ({ gameState, hand }: HandDealtPayload) => {

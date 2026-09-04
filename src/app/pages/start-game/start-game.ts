@@ -1,4 +1,4 @@
-import { Component, effect, ElementRef, HostListener, signal, viewChild } from '@angular/core';
+import { Component, ComponentRef, computed, effect, ElementRef, HostListener, signal, Type, viewChild, ViewContainerRef } from '@angular/core';
 import { ActivatedRoute, RouterLink, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -6,16 +6,19 @@ import { Subscription, fromEvent, merge, debounceTime, tap, filter } from 'rxjs'
 
 import { createDefaultGameState, GameSocketService, ChatMessage } from '../../core/ConnectionServices/GameSocketService';
 import { PlayerModel } from '../../core/models/PlayerModel';
-import { Game, GAME_RULES } from '../../core/constants/gameRules';
-import { SpadesGameBoard } from '../spades/spades-game-board';
+import { Game, GAME_METADATA } from '../../core/constants/gameRules';
 import { MarkdownPipe } from '../../core/OtherServices/MarkdownPipe';
+import { GAME_BOARD_REGISTRY } from '../../core/constants/gameRules';
+import { GameBoardComponent } from '../../core/models/GameBoardComponents';
+import { SUITS, RANK_VALUES } from '../../core/constants/deck';
 
 @Component({
   selector: 'app-start-game',
-  imports: [RouterLink, CommonModule, FormsModule, SpadesGameBoard, MarkdownPipe],
+  imports: [RouterLink, CommonModule, FormsModule, MarkdownPipe],
   templateUrl: './start-game.html',
   styleUrl: './start-game.css',
 })
+
 export class StartGame {
   gameTitle: Game =  'Blackjack';
   instructions = 'This is my body!';
@@ -33,11 +36,24 @@ export class StartGame {
   amHost = signal<boolean>(false);
   hideChat = signal<boolean>(true);
   myId = '';
-  clientId = '';
   errorMsg = '';
+
+  cardNumber = Math.floor(Math.random() * (13)) + 1;
+  cardSuit = SUITS[Math.floor(Math.random() * 3)].imageUrl;
+
+  gameComponent: Type<GameBoardComponent> | null;
+  gameInputs = signal<{ roomCode: string } | null>(null);
+  gameOutletRef = viewChild('gameOutlet', { read: ViewContainerRef });
+  private currentGameRef: ComponentRef<GameBoardComponent> | null = null;
 
   private subs = new Subscription();
   chatBoxEle = viewChild<ElementRef>('chatBoxContainer');
+  @HostListener('window:beforeunload', ['$event'])
+  handleTabClose(event: BeforeUnloadEvent) {
+    this.gameSocket.leaveGame();
+    this.gameSocket.disconnect();
+  }
+
   @HostListener('window:keydown.shift.enter', ['$event'])
   handleKeyDown(event: KeyboardEvent | Event) {
     // Ensure we arent focused in the chat box
@@ -54,6 +70,7 @@ export class StartGame {
       }, 1)
     }
   }
+
   @HostListener('window:click', ['$event'])
   handleClick(event: MouseEvent | Event ) {
       const scrollContainer = document.getElementById('chat-box-container');
@@ -67,8 +84,22 @@ export class StartGame {
     private router: Router
   ) {
     this.gameTitle = this.route.snapshot.paramMap.get('game')! as Game;
-    this.instructions = (GAME_RULES[this.gameTitle]).instructions;
-    this.allowMultiplePlayers = (GAME_RULES[this.gameTitle]).allowMultiplayer;
+    console.log(this.gameTitle);
+    this.instructions = (GAME_METADATA[this.gameTitle]).instructions;
+    this.allowMultiplePlayers = (GAME_METADATA[this.gameTitle]).allowMultiplayer;
+    this.gameComponent = GAME_BOARD_REGISTRY[this.gameTitle] ?? null;
+
+    effect(() => {
+      const container = this.gameOutletRef();
+      const started = this.gameStarted();
+
+      if (container && started && this.gameComponent && this.gameInputs()) {
+        this.mountGameComponent(container);
+      } else if (!started) {
+        this.currentGameRef?.destroy();
+        this.currentGameRef = null;
+      }
+    })
 
     effect(() => {
       const elementRef = this.chatBoxEle();
@@ -105,6 +136,20 @@ export class StartGame {
     })
   }
 
+  private mountGameComponent(container: ViewContainerRef) {
+    if (this.currentGameRef) return;  // Already mounted
+
+    container.clear();
+    const ref = container.createComponent(this.gameComponent!);
+
+    ref.setInput('roomCode', this.gameInputs()!.roomCode);
+
+    this.subs.add(ref.instance.closeGame?.subscribe(() => this.leaveRoom()));
+    this.subs.add(ref.instance.resetGame?.subscribe(() => this.resetGame()));
+
+    this.currentGameRef = ref;
+  }
+
   ngOnInit(): void {
     // Create a Client ID
     this.gameSocket.connect();
@@ -120,6 +165,7 @@ export class StartGame {
     this.subs.add(
       this.gameSocket.roomCreated$.subscribe(({ roomCode, players }) => {
         this.roomCode = roomCode;
+        this.gameInputs.set({roomCode: roomCode });
         this.players.set(players);
         this.inRoom.set(true);
         this.amHost.set(true);
@@ -129,6 +175,7 @@ export class StartGame {
     this.subs.add(
       this.gameSocket.roomJoined$.subscribe(({ roomCode, players, gameState }) => {
         this.roomCode = roomCode;
+        this.gameInputs.set({ roomCode: roomCode });
         this.players.set(players);
         this.gameStarted.set(gameState.started);
         this.inRoom.set(true);
@@ -185,7 +232,7 @@ export class StartGame {
   }
 
   createRoom(): void {
-    this.gameSocket.createRoom(this.playerName);
+    this.gameSocket.createRoom(this.playerName, this.gameTitle.toLowerCase());
   }
 
   joinRoom(): void {
@@ -237,6 +284,7 @@ export class StartGame {
 
   ngOnDestroy(): void {
     this.subs.unsubscribe();
+    this.currentGameRef?.destroy();
     this.gameStarted.set(false);
     this.showHostLeft.set(null);
   }

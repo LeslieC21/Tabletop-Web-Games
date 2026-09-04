@@ -75,6 +75,7 @@
                     You <span>
                         <b>{{ (myPlayer()!.score > (myOldGameState().players.find(p => p.socketId === myId))!.score) ? "gained" : "lost" }}</b>
                     </span> points.
+                    <span>Score: {{ myPlayer()!.score }}, Old Game State: {{myOldGameState().players.find(p => p.socketId === myId)!.score}}</span>
                 </h2>
                 <hr />
             </header>

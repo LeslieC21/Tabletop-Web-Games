@@ -1,20 +1,20 @@
-import { Component, ComponentRef, computed, effect, ElementRef, HostListener, signal, Type, viewChild, ViewContainerRef } from '@angular/core';
-import { ActivatedRoute, RouterLink, Router } from '@angular/router';
+import { Component, ComponentRef, effect, ElementRef, HostListener, signal, Type, viewChild, ViewContainerRef } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription, fromEvent, merge, debounceTime, tap, filter } from 'rxjs';
 
-import { createDefaultGameState, GameSocketService, ChatMessage } from '../../core/ConnectionServices/GameSocketService';
-import { PlayerModel } from '../../core/models/PlayerModel';
+import { GameSocketService, ChatMessage } from '../../core/ConnectionServices/GameSocketService';
 import { Game, GAME_METADATA } from '../../core/constants/gameRules';
 import { MarkdownPipe } from '../../core/OtherServices/MarkdownPipe';
 import { GAME_BOARD_REGISTRY } from '../../core/constants/gameRules';
 import { GameBoardComponent } from '../../core/models/GameBoardComponents';
 import { SUITS, RANK_VALUES } from '../../core/constants/deck';
+import { BasePlayerState } from '../../core/models/game-state.model';
 
 @Component({
   selector: 'app-start-game',
-  imports: [RouterLink, CommonModule, FormsModule, MarkdownPipe],
+  imports: [CommonModule, FormsModule, MarkdownPipe],
   templateUrl: './start-game.html',
   styleUrl: './start-game.css',
 })
@@ -29,7 +29,7 @@ export class StartGame {
   playerName = '';
   joinCode = '';
   roomCode: string | null = null;
-  players = signal<PlayerModel[]>([]);
+  players = signal<BasePlayerState[]>([]);
   chatMessages = signal<ChatMessage[]>([]);
   gameStarted = signal<boolean>(false);
   inRoom = signal<boolean>(false);
@@ -38,7 +38,8 @@ export class StartGame {
   myId = '';
   errorMsg = '';
 
-  cardNumber = Math.floor(Math.random() * (13)) + 1;
+  cardNumberIndex = Math.floor(Math.random() * Object.keys(RANK_VALUES).length);
+  cardNumber = Object.keys(RANK_VALUES)[this.cardNumberIndex];
   cardSuit = SUITS[Math.floor(Math.random() * 3)].imageUrl;
 
   gameComponent: Type<GameBoardComponent> | null;
@@ -152,6 +153,7 @@ export class StartGame {
 
   ngOnInit(): void {
     // Create a Client ID
+    if (this.allowMultiplePlayers) {
     this.gameSocket.connect();
 
     this.subs.add(
@@ -194,9 +196,9 @@ export class StartGame {
 
     this.subs.add(
       this.gameSocket.gameState$.subscribe((state) => { 
-        console.log(state);
-        this.gameStarted.set(state.started);
-        this.players.set(state.players);
+        if(state == null) return;
+        this.gameStarted.set(state!.started);
+        // this.players.set(state!.players);
       })
     );
 
@@ -229,6 +231,7 @@ export class StartGame {
         this.hideChat.set(false);
       })
     )
+    }
   }
 
   createRoom(): void {
@@ -242,6 +245,11 @@ export class StartGame {
   startGame(): void {
     if(this.roomCode) {
       this.gameSocket.startGame(this.roomCode);
+    }
+
+    if(!this.allowMultiplePlayers) {
+      this.gameInputs.set({ roomCode: 'local' })
+      this.gameStarted.set(true);
     }
   }
 
@@ -259,7 +267,7 @@ export class StartGame {
     this.inRoom.set(false);
     this.roomCode = '';
     this.joinCode = '';
-    this.gameSocket.gameState$.next(createDefaultGameState());
+    this.gameSocket.gameState$.next(null);
     this.gameSocket.leaveGame();
     this.resetGame();
   }

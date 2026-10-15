@@ -5,24 +5,24 @@ const suits = [
     { name: 'Spades', imageUrl: '/Spades.png'},
 ];
 
-// const Ranks = {
-//     2: "2", 3: "3", 4: "4", 5: "5", 6: "6", 7: "7",
-//     8: "8", 9: "9", 10: "10",
-//     11: "J", 12: "Q", 13: "K", 14: "A",
-// };
-
-const TestRanks = {
-    2: "2", 3: "3",
+const Ranks = {
+    2: "2", 3: "3", 4: "4", 5: "5", 6: "6", 7: "7",
+    8: "8", 9: "9", 10: "10",
+    11: "J", 12: "Q", 13: "K", 14: "A",
 };
+
+// const TestRanks = {
+//     2: "2", 3: "3",
+// };
 
 function createDeck() {
     const deck = [];
     for (const suit of suits) {
-        for(let value = 2; value <= 3; value++) {
+        for(let value = 2; value <= 14; value++) {
             deck.push({
                 suit,
                 value,
-                rank: TestRanks[value]
+                rank: Ranks[value]
             });
         }
     }

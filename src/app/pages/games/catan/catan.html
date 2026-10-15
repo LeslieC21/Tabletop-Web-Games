@@ -1,1 +1,84 @@
-<p>catan works!</p>
+<p>Your Points: {{ myPlayer()!.score }}</p>
+<svg class="board" [attr.viewBox]="viewBox" role="img" aria-label="Catan Board">
+  <g>
+    @for(tile of tiles(); track tile.id) {
+    <polygon [attr.class]="'tile res-' + tile.resource" [attr.points]="tile.points" (click)="tileClick(tile.id)"/>
+
+    @if (tile.numberToken && tile.id !== currentGameState()!.robberTileId) {
+    <circle class="token" [attr.cx]="tile.cx" [attr.cy]="tile.cy" r="15" [class.tileHover]="myPlayer()?.status === 'movingRobber'" (click)="tileClick(tile.id)"/>
+    <text [attr.class]="tile.hot ? 'token-text hot' : 'token-text'" [attr.x]="tile.cx" [attr.y]="tile.cy + 5">
+      {{ tile.numberToken }}
+    </text>
+    }
+
+    @if (tile.id === currentGameState()!.robberTileId) {
+    <g>
+      <circle class="robber" [attr.cx]="tile.cx" [attr.cy]="tile.cy" r="10"></circle>
+      <ellipse class="robber" [attr.cx]="tile.cx" [attr.cy]="tile.cy-10" [attr.ry]="8"></ellipse>
+      <text class="robber-text" [attr.x]="tile.cx" [attr.y]="tile.cy + 20">ROBBER</text>
+    </g>
+    }
+    }
+  </g>
+
+  <g>
+    @for (edge of edges(); track edge.id) {
+    <g [class.edge]="currentTurnId() === myId" (click)="edgeClick(edge.id, $event)" (contextmenu)="edgeClick(edge.id, $event)">
+      @if (edge.hasRoad) {
+      <line class="road-outline" [attr.x1]="edge.x1" [attr.y1]="edge.y1" [attr.x2]="edge.x2" [attr.y2]="edge.y2" />
+      <line [attr.class]="'road player-' + this.currentGameState()!.players.findIndex(player => player.socketId == edge.owner)" [attr.x1]="edge.x1" [attr.y1]="edge.y1" [attr.x2]="edge.x2"
+        [attr.y2]="edge.y2" />
+      } @else {
+      <line class="edge-empty" [attr.x1]="edge.x1" [attr.y1]="edge.y1" [attr.x2]="edge.x2" [attr.y2]="edge.y2" />
+      }
+      <line class="hit-area edge-hit" [attr.x1]="edge.x1" [attr.y1]="edge.y1" [attr.x2]="edge.x2" [attr.y2]="edge.y2" />
+    </g>
+    }
+  </g>
+
+  <g>
+    @for (vertex of vertices(); track vertex.id) {
+    <g [class.vertex]="currentTurnId() === myId" [attr.transform]="'translate(' + vertex.x + ' ' + vertex.y + ')'"
+      (click)="vertexClick(vertex.id, $event)" (contextmenu)="vertexClick(vertex.id, $event)">
+      @switch (vertex.building) {
+      @case ('Settlement') {
+      <path [attr.class]="'building player-' + this.currentGameState()!.players.findIndex(player => player.socketId == vertex.owner)" [attr.d]="settlementPath" />
+      }
+      @case ('City') {
+      <path [attr.class]="'building player-' + this.currentGameState()!.players.findIndex(player => player.socketId == vertex.owner)" [attr.d]="cityPath" />
+      }
+      @default {
+      <circle class="vertex-dot" r="5" />
+      }
+      }
+      <circle class="hit-area" r="14" />
+    </g>
+    }
+  </g>
+</svg>
+
+<div class="hand">
+  @for(card of myHand() | keyvalue; track $index) {
+    <p>{{ card.key }} x{{ card.value }}</p>
+  }
+</div>
+
+<div class="buttons">
+  <button type="button" (click)="rollDice()">Roll Dice</button>
+  <button type="button" (click)="endTurn()">End Turn</button>
+  <button type="button" (click)="toggleStore()">Store</button>
+</div>
+
+@if(isStoreOpen()) {
+<div class="store-container">
+  <div class="store-inner">
+    <button class="store-close" (click)="toggleStore()"></button>
+    <ul class="store-items">
+      <li class="item" (click)="buyItem('Road')">Road</li>
+      <li class="item" (click)="buyItem('Settlement')">Settlement</li>
+      <li class="item" (click)="buyItem('City')">City</li>
+      <li class="item" (click)="buyItem('DevelopmentCard')">Development Card</li>
+    </ul>
+  </div>
+</div>
+}

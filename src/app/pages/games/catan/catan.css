@@ -1,0 +1,156 @@
+:host {
+  display: block;
+
+  /* Player colors: index matches the `owner` number from the server */
+  --player-0: #e63946;
+  --player-1: #4dabf7;
+  --player-2: #f4f1de;
+  --player-3: #ff9f1c;
+
+  --ink: #0f2234;
+  --sea: #1b4d6e;
+}
+
+.board {
+  display: block;
+  width: 100%;
+  max-width: 760px;
+  height: auto;
+  margin: 0 auto;
+  background: var(--sea);
+  border-radius: 16px;
+}
+
+/* ---------- Tiles ---------- */
+
+.tile {
+  stroke: var(--ink);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.res-Forest { fill: #2d6a4f; }
+.res-Sheep  { fill: #95d5b2; }
+.res-Wheat  { fill: #e9c46a; }
+.res-Clay   { fill: #bc6c25; }
+.res-Quarry { fill: #8d99ae; }
+.res-Desert { fill: #e9d8a6; }
+
+.token {
+  fill: #f6efdd;
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+
+.robber {
+  fill: #525252;
+  stroke: #222;
+  stroke-width: 1.5;
+}
+
+.robber-text {
+  text-anchor: middle;
+  font-size: 10px;
+}
+
+.token-text {
+  text-anchor: middle;
+  font-size: 15px;
+  font-weight: 700;
+  fill: #222;
+  pointer-events: none;
+}
+
+.token-text.hot {
+  fill: #c1121f;
+}
+
+/* ---------- Clickable things ---------- */
+
+.edge,
+.vertex {
+  cursor: pointer;
+}
+
+/* Invisible but clickable. `all` lets a transparent shape receive pointer events. */
+.hit-area {
+  fill: transparent;
+  stroke: transparent;
+  pointer-events: all;
+}
+
+.edge-hit {
+  stroke-width: 18;
+  stroke-linecap: round;
+}
+
+/* ---------- Edges / roads ---------- */
+
+.edge-empty {
+  stroke: transparent;
+  stroke-width: 7;
+  stroke-linecap: round;
+  transition: stroke 0.1s;
+}
+
+.edge:hover .edge-empty {
+  stroke: rgba(255, 255, 255, 0.75);
+}
+
+.tileHover:hover {
+  stroke: rgba(255, 255, 255, 0.75);
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke 0.1s;
+}
+
+.road-outline {
+  stroke: var(--ink);
+  stroke-width: 11;
+  stroke-linecap: round;
+}
+
+.road {
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+
+.edge:hover .road {
+  filter: brightness(1.25);
+}
+
+/* ---------- Vertices / buildings ---------- */
+
+.vertex-dot {
+  fill: rgba(255, 255, 255, 0.28);
+  transition: fill 0.1s, transform 0.1s;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.vertex:hover .vertex-dot {
+  fill: #fff;
+  transform: scale(1.4);
+}
+
+.building {
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.vertex:hover .building {
+  filter: brightness(1.2);
+}
+
+/* ---------- Player colors (roads use stroke, buildings use fill) ---------- */
+
+.road.player-0 { stroke: var(--player-0); }
+.road.player-1 { stroke: var(--player-1); }
+.road.player-2 { stroke: var(--player-2); }
+.road.player-3 { stroke: var(--player-3); }
+
+.building.player-0 { fill: var(--player-0); }
+.building.player-1 { fill: var(--player-1); }
+.building.player-2 { fill: var(--player-2); }
+.building.player-3 { fill: var(--player-3); }

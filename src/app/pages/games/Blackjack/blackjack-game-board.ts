@@ -12,7 +12,7 @@ import { Cards } from '../../../components/cards/cards';
   styleUrl: './blackjack-game-board.css',
 })
 export class BlackJackGameBoard {
-  @Input ({ required: true }) roomCode!: string;
+  @Input () roomCode!: string;
   @Output() closeGame = new EventEmitter<void>();
   @Output() resetGame = new EventEmitter<void>();
   

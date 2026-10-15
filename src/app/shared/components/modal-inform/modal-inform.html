@@ -1,0 +1,17 @@
+  <div class="modal-overlay" (click)="close()">
+    <div class="modal-container" (click)="$event.stopPropagation()">
+      
+      <header class="modal-header">
+        <h1>{{ modalMessage?.title }}</h1>
+        <button class="close-btn" (click)="close()">&times;</button>
+      </header>
+
+      <main class="modal-body">
+        <p>{{ modalMessage?.message }}</p>
+      </main>
+
+      <footer>
+        <button type="button" (click)="close()">Ok</button>
+      </footer>
+    </div>
+  </div>

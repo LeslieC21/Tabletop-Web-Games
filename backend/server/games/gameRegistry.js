@@ -1,7 +1,9 @@
 const spades = require('./spades');
+const catan = require('./catan');
 
 const GAMES = {
     spades,
+    catan
 }
 
 function getGame(gameType) {

@@ -1,12 +1,12 @@
-import { Component, effect, inject, signal, Output, EventEmitter, computed, Input, NgZone } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, signal, Output, EventEmitter, computed, Input, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { Cards } from '../../../components/cards/cards';
-// import { SpadesService } from '../../core/GameServices/spades';
-import { GameState, createDefaultGameState } from '../../../core/ConnectionServices/GameSocketService';
+// import { GameState, createDefaultGameState } from '../../../core/ConnectionServices/GameSocketService';
 import { GameSocketService } from '../../../core/ConnectionServices/GameSocketService';
 import { Card } from '../../../core/constants/deck';
+import { SpadesGameState } from './spades.models';
+import { SpadesGameService } from './SpadesGameService';
 
 @Component({
   selector: 'app-spades-game-board',
@@ -19,19 +19,20 @@ export class SpadesGameBoard {
   @Output() closeGame = new EventEmitter<void>();
   @Output() resetGame = new EventEmitter<void>();
 
-  currentGameState = signal<GameState>(createDefaultGameState());
-  myOldGameState = signal<GameState>(createDefaultGameState());
+  spadesService = inject(SpadesGameService);
+
+  currentGameState = signal<SpadesGameState | null>(null);
+  myOldGameState = signal<SpadesGameState | null>(null);
     currentTurnId = computed(() => {
-      let s = this.currentGameState().currentTurnIndex;
-      return this.currentGameState().players.at(s)?.socketId;
+      let s = this.currentGameState()!.currentTurnIndex;
+      return this.currentGameState()!.players.at(s)?.socketId;
     })
     myPlayer = computed(() => {
       let s =  this.gameSocket.socketId;
-      console.log(s);
-      return this.currentGameState().players.find(p => p.socketId == s);
+      return this.currentGameState()!.players.find(p => p.socketId == s);
     })
     myHand = computed(() => {
-      return this.myPlayer()!.hand;
+      return this.myPlayer()!.hand as Card[];
     });
 
     selectedCard = signal<Card | null>(null);
@@ -39,7 +40,7 @@ export class SpadesGameBoard {
     showBidModal = signal<boolean>(false);
   
     constructor(private gameSocket: GameSocketService) {
-      this.gameSocket.gameState$.subscribe((state) => {
+      this.spadesService.state$.subscribe((state) => {
 
         if(state.phase === "hand-complete" || state.phase === "game-over" || state.phase === "sudden-death") {
           this.showScoreModal.set(true);
@@ -47,14 +48,14 @@ export class SpadesGameBoard {
           this.showScoreModal.set(false);
         }
 
-        if(state.phase !== this.currentGameState().phase && state.phase === "game-over" || state.phase === "sudden-death") {
+        if(state.phase !== this.currentGameState()!.phase && state.phase === "game-over" || state.phase === "sudden-death") {
           this.myOldGameState.set(state);
         }
 
         this.currentGameState.update(s => ({ ...state }));
         this.selectedCard.set(null);
 
-        if(this.currentGameState().phase == "bidding"&& 
+        if(this.currentGameState()!.phase == "bidding"&& 
           this.myPlayer()?.bid == -1 && 
           this.currentTurnId() === this.myId) {
           this.showBidModal.set(true);

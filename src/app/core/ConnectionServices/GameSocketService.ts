@@ -1,42 +1,12 @@
 import { Injectable, OnDestroy, NgZone, HostListener } from "@angular/core";
 import { io, Socket } from 'socket.io-client'
-import { BehaviorSubject, Subject } from "rxjs";
+import { BehaviorSubject, filter, Observable, Subject } from "rxjs";
 
-import { PlayerModel } from "../models/PlayerModel";
 import { Card } from "../constants/deck";
- 
-export interface GameState {
-  started: boolean;
-  phase: "waiting" | "bidding" | "playing" | "hand-complete" | "game-over" | "sudden-death";
-  players: PlayerModel[];
-  dealerIndex: number,          // whose turn it is to deal — rotates each hand
-  currentTurnIndex: number,     // index into players[] — whose turn to bid/play
-  currentTrick: Trick[],             // cards played so far this trick: [{ playerId, card }]
-  tricksPlayed: number,         // how many tricks completed this hand (0–13)
-  spadesBroken: boolean,        // has a spade been played yet this hand
-  roundNumber: number,           // which hand of the overall game this is
-  winner: number
-}
+import { GameState } from "../models/game-type.model";
+import { BaseGameState, BasePlayerState } from "../models/game-state.model";
 
-export function createDefaultGameState(): GameState {
-    return {
-        started: false,
-        phase: "waiting",
-        players: [],
-        dealerIndex: 0,
-        currentTurnIndex: 0,
-        currentTrick: [],
-        tricksPlayed: 0,
-        spadesBroken: false,
-        roundNumber: 1,
-        winner: -1
-    }
-}
-
-export interface Trick {
-    card: Card;
-    playerToMutate: string;
-}
+export type GameType = 'spades' | 'catan';
 
 export interface HandDealtPayload {
     hand: Card[];
@@ -45,17 +15,17 @@ export interface HandDealtPayload {
 
 export interface RoomCreatedPayload {
     roomCode: string;
-    players: PlayerModel[];
+    players: BasePlayerState[];
 }
 
 export interface RoomJoinedPayload {
     roomCode: string;
-    players: PlayerModel[];
+    players: BasePlayerState[];
     gameState: GameState;
 }
 
 export interface PlayerJoinedPayload {
-    players: PlayerModel[];
+    players: BasePlayerState[];
     newPlayer: {
         id: string;
         name: string;
@@ -63,7 +33,7 @@ export interface PlayerJoinedPayload {
 }
 
 export interface PlayerLeftPayload {
-    players: PlayerModel[];
+    players: BasePlayerState[];
     playerName: string;
     gameState: GameState;
 }
@@ -102,8 +72,8 @@ export class GameSocketService implements OnDestroy{
     }
 
     // Public state streams
-    players$ = new BehaviorSubject<PlayerModel[]>([]);
-    gameState$ = new BehaviorSubject<GameState>(createDefaultGameState());
+    players$ = new BehaviorSubject<BasePlayerState[]>([]);
+    gameState$ = new BehaviorSubject<BaseGameState | null>(null);
     roomCode$ = new BehaviorSubject<string | null>(null);
     connected$ = new BehaviorSubject<boolean>(false);
     hostLeft$ = new BehaviorSubject<string | null>(null);
@@ -118,8 +88,22 @@ export class GameSocketService implements OnDestroy{
     playerLeft$ = new Subject<PlayerLeftPayload>();
     gameUpdate$ = new Subject<GameUpdatePayload>();
 
-    constructor(private ngZone: NgZone) {
-        
+    constructor(private ngZone: NgZone) {}
+
+    selectState<T extends GameState>(type: T['gameType']): Observable<T> {
+        return this.gameState$.pipe(
+            filter((s): s is T => s !== null && s.gameType === type)
+        )
+    }
+
+    fromEvent<T>(event: string): Observable<T> {
+        return new Observable<T>((subscriber) => {
+            // const handler = (data: T) => this.ngZone.run(() => subscriber.next(data));
+            this.socket.on(event, (data) => {
+                this.gameState$.next(data);
+            });
+            // return () => this.socket.off(event, handler);
+        })
     }
 
     connect(): void {
@@ -195,7 +179,7 @@ export class GameSocketService implements OnDestroy{
         return this.socket?.id ?? '';
     }
 
-    isHost(players: PlayerModel[]): boolean {
+    isHost(players: BasePlayerState[]): boolean {
         return players.find(p => p.socketId === this.socketId)?.isHost ?? false;
     }
 
@@ -237,7 +221,6 @@ export class GameSocketService implements OnDestroy{
                 this.players$.next(data.players);
                 this.playerLeft$.next(data);
                 this.gameState$.next(data.gameState);
-                console.log("PLAYER LEFT");
         });
 
         this.socket.on('hand-dealt', ({ gameState, hand }: HandDealtPayload) => {
@@ -247,7 +230,8 @@ export class GameSocketService implements OnDestroy{
             });
         });
 
-        this.socket.on('game-update', (data: GameUpdatePayload) => {
+        this.socket.on('game-update', (data) => {
+            console.log(data);
             this.gameState$.next(data.gameState);
         });
 

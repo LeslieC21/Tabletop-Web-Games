@@ -16,10 +16,10 @@ export const routes: Routes = [
         path: 'GameLobby/:game',
         component: StartGame
     },
-    {
-        path: 'Play/Blackjack',
-        component: BlackJackGameBoard
-    },
+    // {
+    //     path: 'Play/Blackjack',
+    //     component: BlackJackGameBoard
+    // },
     {
         path: '**',
         redirectTo: ''

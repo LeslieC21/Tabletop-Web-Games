@@ -12,7 +12,7 @@
     <!-- @if(!isMyTurn) {<h1 style="color: red;">&uarr;</h1>} -->
     </section>
     <main class="deck">
-        @for(trick of currentGameState().currentTrick; track $index) {
+        @for(trick of currentGameState()!.currentTrick; track $index) {
             <app-cards [card]="trick.card"/>
         }
     </main>
@@ -40,7 +40,7 @@
             <button (click)="playCard()" [disabled]="!(currentTurnId() === myId) || selectedCard() == null">Play Card</button>
         </div>
     </section>
-    @if(currentGameState().phase == "bidding" && myPlayer()?.bid == -1 && currentTurnId() === myId) {
+    @if(currentGameState()!.phase == "bidding" && myPlayer()?.bid == -1 && currentTurnId() === myId) {
         <button class="showModal-button" (click)="this.showBidModal.update(oldVal => !oldVal)">{{ this.showBidModal() ? "Show Cards" : "&#9634;" }}</button>
     }
 </div>
@@ -68,14 +68,14 @@
     @if(showScoreModal()) {
     <div class="modal-background">
         <div class="modal-container">
-        @if(currentGameState().phase === "hand-complete" || currentGameState().phase === "sudden-death") {
+        @if(currentGameState()!.phase === "hand-complete" || currentGameState()!.phase === "sudden-death") {
             <header>
-                <h1>{{ currentGameState().phase === "sudden-death" ? "Sudden Death!" : "Hand Complete!" }}</h1>
+                <h1>{{ currentGameState()!.phase === "sudden-death" ? "Sudden Death!" : "Hand Complete!" }}</h1>
                 <h2>
                     You <span>
-                        <b>{{ (myPlayer()!.score > (myOldGameState().players.find(p => p.socketId === myId))!.score) ? "gained" : "lost" }}</b>
+                        <b>{{ (myPlayer()!.score > (myOldGameState()!.players.find(p => p.socketId === myId))!.score) ? "gained" : "lost" }}</b>
                     </span> points.
-                    <span>Score: {{ myPlayer()!.score }}, Old Game State: {{myOldGameState().players.find(p => p.socketId === myId)!.score}}</span>
+                    <span>Score: {{ myPlayer()!.score }}, Old Game State: {{myOldGameState()!.players.find(p => p.socketId === myId)!.score}}</span>
                 </h2>
                 <hr />
             </header>
@@ -95,7 +95,7 @@
                     </b>
                 </p>
                 <div class="player-scores">
-                    @for(player of currentGameState().players; track player.socketId) {
+                    @for(player of currentGameState()!.players; track player.socketId) {
                         <fieldset class="player-score">
                             <details>
                                 <summary>See {{ player.name }}s' Score</summary>
@@ -116,19 +116,19 @@
                     <p>Waiting for host to continue...</p>
                 }
             </footer>
-        } @else if(currentGameState().phase === "game-over") {
+        } @else if(currentGameState()!.phase === "game-over") {
             <header>
                 <h1>
                     <span>Game Over!</span>
                 </h1>
                 <h2>
-                    <span>The winner is Team {{ currentGameState().winner + 1}}</span>
+                    <span>The winner is Team {{ currentGameState()!.winner + 1}}</span>
                 </h2>
                 <hr />
             </header>
             <main>
                 <div class="player-scores">
-                    @for(player of myOldGameState().players; track player.socketId) {
+                    @for(player of myOldGameState()!.players; track player.socketId) {
                         <fieldset class="player-score">
                             <details>
                                 <summary>See {{ player.name }}s' Score</summary>

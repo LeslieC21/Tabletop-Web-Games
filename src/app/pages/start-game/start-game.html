@@ -84,7 +84,7 @@
                 }
             </main>
             @if(!allowMultiplePlayers) {
-                <button class="play-button" [routerLink]="[`/Play/${gameTitle}`]">Start Game</button>
+                <button class="play-button" (click)="startGame()">Start Game</button>
             }
         </div>
         <section class="card-suit-bot">
@@ -126,8 +126,8 @@
         <div class="modal-title">
             <h1>How to Play {{gameTitle}}</h1>
         </div>
-        <div class="modal-body" [innerHTML]="instructions | markToHtml">
-            <!-- <div [innerHTML]="instructions | markToHtml"></div> -->
+        <div class="modal-body">
+            <div [innerHTML]="instructions | markToHtml"></div>
         </div>
         <div class="modal-buttons">
             <button class="modal-exit-button" (click)="showInstructions.set(false)">Ok</button>

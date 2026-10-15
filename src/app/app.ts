@@ -1,5 +1,6 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, inject, ViewContainerRef } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { ModalService } from './services/dialog.service';
 
 @Component({
   selector: 'app-root',
@@ -10,4 +11,8 @@ import { RouterOutlet } from '@angular/router';
 
 export class App {
   protected readonly title = signal('Blackjack');
+
+  constructor(vcr: ViewContainerRef) {
+    inject(ModalService).registerContainer(vcr);
+  }
 }

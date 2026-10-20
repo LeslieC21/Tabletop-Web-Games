@@ -4,7 +4,10 @@ const {
     canPlayerAfford, 
     endTurn, 
     lockPlayerMoves,
-    rollDice
+    rollDice,
+    playerMoveRobber,
+    playerStoleCard,
+    playerHalfCardsToBank
  } = require('./gameLogic');
 
 const NON_CARD_TILES = [ResourceType.Desert, ResourceType.None]
@@ -24,7 +27,7 @@ function createInitialPlayerState() {
         score: 0,
         placedBuildings: 0,
         placedRoads: 0,
-        status: 'ready',
+        pendingActions: [],
         hasRolled: false,
         ready: true,
     };
@@ -45,6 +48,7 @@ function createInitialGameState() {
         players: [],
         currentTurnIndex: 0,
         robberTileId: null,
+        isStealingFrom: [],
         winner: null
     };
 }
@@ -72,9 +76,17 @@ function sanitizeGameStateFor(gameState, forPlayerId) {
         ...gameState,
         players: (gameState.players || []).map((p) => ({
             ...p,
-            hand: p.socketId === forPlayerId ? p.hand : undefined
+            hand: p.socketId === forPlayerId ? p.hand : undefined,
+            handSize: calculatePlayerCards(p)
         })),
     };
+}
+
+function calculatePlayerCards(player) {
+    let totalCards = 0;
+    Object.values(player.hand.resources).forEach((r) => totalCards += r);
+
+    return totalCards;
 }
 
 function handleAction(room, action, socketId, payload, helpers) {
@@ -82,6 +94,7 @@ function handleAction(room, action, socketId, payload, helpers) {
     
     const clickedVertex = room.gameBoard.vertices[payload.vertexId] ?? [];
     const clickedEdge = room.gameBoard.edges[payload.edgeId] ?? [];
+    const clickedTile = room.gameBoard.tiles.find(t => t.id === payload.tileId);
 
     switch (action) {
         case "roll-dice":
@@ -92,9 +105,15 @@ function handleAction(room, action, socketId, payload, helpers) {
             lockPlayerMoves(room, socketId);
         break;
         case "moved-robber":
-            room.gameState.robberTileId = payload.tileId;
-            playerToMutate.status = 'ready';
+            playerMoveRobber(clickedTile, room, socketId);
         break;
+        case "stole-card":
+            playerStoleCard(payload.playerStolenFrom, playerToMutate, room);
+            room.gameState.isStealingFrom = [];
+        break;
+        case "give-to-bank":
+            playerHalfCardsToBank(payload.cardIds, playerToMutate, room);
+            break;
         case "player-add-building":
             var s = isValidBuildingPlace(room, socketId, clickedVertex);
             if(clickedVertex.building == 'None') {

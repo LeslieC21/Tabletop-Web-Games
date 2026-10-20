@@ -154,3 +154,36 @@
 .building.player-1 { fill: var(--player-1); }
 .building.player-2 { fill: var(--player-2); }
 .building.player-3 { fill: var(--player-3); }
+
+.hand {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.round-container {
+  position: sticky;
+  top: 0;
+  width: 50%;
+  background: #f4f1dea6;
+  margin: auto;
+  border-radius: 0 0 15px 15px;
+  padding: 5px 20px;
+  text-align: center;
+}
+
+.player {
+  margin: auto;
+  text-align: center;
+  font-size: larger;
+}
+
+.canSelect:hover {
+  transform: translateY(-10px);
+}
+
+.card-selected {
+  transform: translateY(-10px);
+  border: 2px solid gold;
+  border-radius: 10px;
+}

@@ -1,6 +1,4 @@
-<svg role="img" aria-label="Catan Resource Card">
-    <g>
-        <text> {{ resource}}</text>
-    </g>
-</svg>
+<div [class]="'resource-card res-' + resource" [class.canSelect]="canSelect">
+    {{ isCardHidden ? '' : resource }}
+</div>
 

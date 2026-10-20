@@ -1,0 +1,26 @@
+.resource-card {
+  width: 64px;
+  height: 92px;
+  border-radius: 8px;
+  border: 2px solid rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 6px;
+  font-weight: 700;
+  font-size: 12px;
+  color: #fff;
+  flex-shrink: 0;
+  transition: transform 0.12s;
+}
+
+.resource-card + .resource-card {
+  margin-left: -28px;
+}
+
+.res-Forest { background: #2d6a4f; }
+.res-Sheep  { background: #74b98e; }
+.res-Wheat  { background: #d4a72c; }
+.res-Clay   { background: #bc6c25; }
+.res-Quarry { background: #6b7a8f; }
+.res-Desert { background-color: rgb(158, 96, 4); }

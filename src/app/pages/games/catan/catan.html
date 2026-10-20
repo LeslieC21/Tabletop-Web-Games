@@ -1,11 +1,30 @@
+<div class="round-container">
+  <h2>{{ currentTurnId() == myId ? 'Your Turn' : `Player ${currentGameState()!.currentTurnIndex + 1}'s Turn` }}</h2>
+  <p>What to do during this phase?</p>
+</div>
 <p>Your Points: {{ myPlayer()!.score }}</p>
+<div class="player">
+  <div class="hand">
+    @for(item of [].constructor(otherPlayers()[0].handSize); track $index) {
+      <app-catan-card 
+      (click)="selectOpponentCard(otherPlayers()[0].socketId)"
+      [resource]="'Desert'" 
+      [isCardHidden]="true" 
+      [class.canSelect]="
+        myPlayer()!.pendingActions[0] === 'movingRobber' && 
+        (currentGameState()!.isStealingFrom)!.includes(otherPlayers()[0].socketId)"
+        ></app-catan-card>
+    }
+  </div>
+  <h3>{{ otherPlayers()[0].name }}</h3>
+</div>
 <svg class="board" [attr.viewBox]="viewBox" role="img" aria-label="Catan Board">
   <g>
     @for(tile of tiles(); track tile.id) {
     <polygon [attr.class]="'tile res-' + tile.resource" [attr.points]="tile.points" (click)="tileClick(tile.id)"/>
 
     @if (tile.numberToken && tile.id !== currentGameState()!.robberTileId) {
-    <circle class="token" [attr.cx]="tile.cx" [attr.cy]="tile.cy" r="15" [class.tileHover]="myPlayer()?.status === 'movingRobber'" (click)="tileClick(tile.id)"/>
+    <circle class="token" [attr.cx]="tile.cx" [attr.cy]="tile.cy" r="15" [class.tileHover]="myPlayer()!.pendingActions[0] === 'movingRobber'" (click)="tileClick(tile.id)"/>
     <text [attr.class]="tile.hot ? 'token-text hot' : 'token-text'" [attr.x]="tile.cx" [attr.y]="tile.cy + 5">
       {{ tile.numberToken }}
     </text>
@@ -57,16 +76,31 @@
   </g>
 </svg>
 
-<div class="hand">
-  @for(card of myHand() | keyvalue; track $index) {
-    <p>{{ card.key }} x{{ card.value }}</p>
+<div class="player">
+  <h3>{{ myPlayer()!.name }} (You)</h3>
+  <div class="hand">
+    @for(card of myHand(); track card.id) {
+      <app-catan-card
+      [class.canSelect]="currentTurnId() === myId"
+      [id]='card.id'
+      (click)="playerSelectedOwnCard(card.id)"
+      [resource]="card.resource" 
+      ></app-catan-card>
+    }
+  </div>
+
+  @if(myPlayer()!.pendingActions[0] === 'removeCards') {
+    <button (click)="giveCardsToBank()">Give to Bank</button>
   }
 </div>
 
 <div class="buttons">
-  <button type="button" (click)="rollDice()">Roll Dice</button>
+  @if(currentGameState()!.phase !== 'setup') {
+    <button type="button" (click)="rollDice()">Roll Dice</button>
+    <button type="button" (click)="toggleStore()">Store</button>
+  }
+  
   <button type="button" (click)="endTurn()">End Turn</button>
-  <button type="button" (click)="toggleStore()">Store</button>
 </div>
 
 @if(isStoreOpen()) {

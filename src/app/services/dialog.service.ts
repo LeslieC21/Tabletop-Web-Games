@@ -21,7 +21,6 @@ export class ModalService {
         this.currentModalRef = this.rootViewContainerRef.createComponent(component);
 
         if(data && 'modalMessage' in this.currentModalRef.instance) {
-            console.log(data);
             this.currentModalRef.instance.modalMessage = data;
         }
 

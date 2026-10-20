@@ -1,8 +1,8 @@
-const { BuildingType } = require("./gameboard");
+const { BuildingType, ResourceType } = require("./gameboard");
 
 function endTurn(room, playerId) {
     // Every player needs to be ready to end a turn
-    if(room.gameState.players.some((p) => p.status !== "ready")) return;
+    if(room.gameState.players.some((p) => p.pendingActions.length !== 0)) return;
 
     var player = room.gameState.players.find((p) => p.socketId === playerId);
     if (!player.hasRolled && room.gameState.phase !== "setup") return;
@@ -68,7 +68,7 @@ function rollDice(room, playerId) {
     const { tiles, vertices } = room.gameBoard;
     const players = room.gameState.players;
 
-    player = players.find((p) => p.socketId === playerId);
+    let player = players.find((p) => p.socketId === playerId);
 
     if (player.hasRolled) return;
 
@@ -88,13 +88,13 @@ function rollDice(room, playerId) {
         for(const p of players) {
             let totalCards = 0;
             Object.values(p.hand.resources).forEach((r) => totalCards += r);
-
+            console.log('Player ' + p.name + ' has ' + totalCards + ' cards.')
             if (totalCards > 7) {
-                p.status = 'removingCards';
+                p.pendingActions.push('removeCards');
             }
         }
 
-        player.status = 'movingRobber';
+        player.pendingActions.push('movingRobber');
     } else {
         for (const tile of tiles) {
             if (tile.numberToken !== rolledNum) continue;
@@ -116,6 +116,50 @@ function rollDice(room, playerId) {
     player.hasRolled = true;
 }
 
+function playerMoveRobber(tile, room, myPlayerId) {
+    room.gameState.robberTileId = tile.id;
+    let players = room.gameState.players;
+
+    let playersToStealFrom = [];
+    // Grab a player from that tile
+    for (const vertexId of tile.vertexIds) {
+        const vertex = room.gameBoard.vertices[vertexId];
+        if (vertex.building === BuildingType.None) continue;
+
+        const player = players.find((p) => p.socketId === vertex.owner && p.socketId !== myPlayerId);
+        if (!player) continue;
+
+        playersToStealFrom.push(player.socketId);
+    }
+    
+    room.gameState.isStealingFrom = playersToStealFrom;
+}
+
+function playerStoleCard(stolenFromId, playerGivenTo, room) {
+    // Take card from player
+    let playerStolenFrom = room.players.find(p => p.socketId == stolenFromId);
+    let stolenFromHand = Object.entries(playerStolenFrom.hand.resources).filter(([key, value]) => value > 0);
+
+    let s = Math.ceil(Math.random() * (stolenFromHand.length - 1));
+    let cardStolen = stolenFromHand[s][0];
+
+    playerStolenFrom.hand.resources[cardStolen] -= 1;
+
+    // Add to current player
+    playerGivenTo.hand.resources[cardStolen] += 1;
+    playerGivenTo.pendingActions.shift();
+}
+
+function playerHalfCardsToBank(cardIds, player, room) {
+    // resource-index 
+    for(const cardId of cardIds) {
+        const resource = cardId.split('-')[0];
+        player.hand.resources[resource] -= 1;
+    }
+
+    player.pendingActions.shift();
+}
+
 function canPlayerAfford() {
 
 }
@@ -126,5 +170,8 @@ module.exports = {
     lockPlayerMoves,
     isValidBuildingPlace,
     canPlayerAfford,
-    rollDice
+    rollDice,
+    playerMoveRobber,
+    playerStoleCard,
+    playerHalfCardsToBank
  };

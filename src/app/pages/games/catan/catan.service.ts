@@ -41,6 +41,14 @@ export class CatanGameService {
         this.conn.sendAction(this.conn.roomCode$.value!, 'player-remove-road', { edgeId });
     }
 
+    playerStoleCard(playerStolenFrom: string) {
+        this.conn.sendAction(this.conn.roomCode$.value!, 'stole-card', { playerStolenFrom });
+    }
+
+    playerSelectedOwnCards(cardIds: string[]) {
+        this.conn.sendAction(this.conn.roomCode$.value!, 'give-to-bank', { cardIds });
+    }
+
     ngOnDestroy() {
         this.sub.unsubscribe();
     }

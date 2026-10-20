@@ -1,5 +1,5 @@
-import { Component, Input } from '@angular/core';
-import { ResourceCard } from '../../pages/games/catan/catan.models';
+import { Component, Input, Output } from '@angular/core';
+import { ResourceType } from '../../core/models/CatanModels';
 
 @Component({
   selector: 'app-catan-card',
@@ -8,5 +8,7 @@ import { ResourceCard } from '../../pages/games/catan/catan.models';
   styleUrl: './catan-card.css',
 })
 export class CatanCard {
-    @Input({ required: true}) resource!: string;
+  @Input({ required: true}) resource!: ResourceType;
+  @Input () isCardHidden: boolean = false;
+  @Input () canSelect: boolean = false;
 }

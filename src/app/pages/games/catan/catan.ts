@@ -1,4 +1,4 @@
-import { Component, computed, EventEmitter, inject, Input, Output, signal } from '@angular/core';
+import { Component, computed, effect, EventEmitter, inject, Input, Output, signal } from '@angular/core';
 
 import { ResourceType, BuildType, Gameboard, createInitialGameboard, Edge, Vertex, BUILD_COSTS } from '../../../core/models/CatanModels';
 import { GameSocketService } from '../../../core/ConnectionServices/GameSocketService';
@@ -7,7 +7,6 @@ import { CatanGameService } from './catan.service';
 import { ModalService } from '../../../services/dialog.service';
 import { CatanCard } from '../../../components/catan-card/catan-card';
 import { ModalInform } from '../../../shared/components/modal-inform/modal-inform';
-import { KeyValuePipe } from '@angular/common';
 
 
 const SCALE = 18;
@@ -46,10 +45,14 @@ interface VertexView {
   locked: boolean;
 }
 
+interface ResourceCardView {
+  id: string,
+  resource: ResourceType;
+}
 
 @Component({
   selector: 'app-catan-game-board',
-  imports: [CatanCard, KeyValuePipe],
+  imports: [CatanCard],
   providers: [CatanGameService],
   templateUrl: './catan.html',
   styleUrl: './catan.css',
@@ -70,6 +73,7 @@ export class CatanGameBoard {
   board = signal<Gameboard>(createInitialGameboard());
   isPlacing = signal<boolean>(false);
   isStoreOpen = signal<boolean>(false);
+  selectedCards = signal<string[]>([]);
 
   readonly settlementPath = SETTLEMENT_PATH;
   readonly cityPath = CITY_PATH;
@@ -78,13 +82,24 @@ export class CatanGameBoard {
   myPlayer = computed(() => {
       let s =  this.gameSocket.socketId;
       return this.currentGameState()!.players.find(p => p.socketId == s);
-    })
+  })
+  otherPlayers = computed(() => {
+    return this.currentGameState()!.players.filter(p => p.socketId !== this.gameSocket.socketId);
+  })
   currentTurnId = computed(() => {
     let s = this.currentGameState()!.currentTurnIndex;
     return this.currentGameState()!.players.at(s)?.socketId;
   })
-  myHand = computed(() => {
-    return this.myPlayer()!.hand.resources ?? [];
+  myHand = computed<ResourceCardView[]>(() => {
+    const r = this.myPlayer()?.hand.resources;
+    if(!r) return [];
+
+    return Object.entries(r).flatMap(([resource, count]) => 
+      Array.from({ length: count }, (_, i) => ({
+        id: `${resource}-${i}`,
+        resource:  resource as ResourceType
+      }))
+    )
   })
   get myId(): string {
     return this.gameSocket.socketId;
@@ -95,9 +110,33 @@ export class CatanGameBoard {
       this.board.set(state.gameBoard!)
       this.updateBoard();
     });
+
+    effect(() => {
+      const action = this.myPlayer()?.pendingActions[0];
+      if (action == 'removeCards') {
+        this.modalService.open(ModalInform, 
+          { 
+            title: 'Someone rolled a 7!', 
+            message: `Since a 7 was rolled and you have more than 7 cards you need to remove
+            1/2 of your deck. To do this- select ${Math.ceil(this.myHand().length / 2)} cards to give back to the bank.`
+          })
+      } else if (action == 'movingRobber' && 
+        !this.otherPlayers()
+        .some(p => p.pendingActions
+          .some(action => action == 'removeCards'))) {
+        this.modalService.open(ModalInform, 
+          { 
+            title: 'You rolled a 7!', 
+            message: `You rolled a seven- so you can now move the robber to stop resource gathering from that tile,
+            then select a card from another player that has a building on that tile.`
+        })
+      }
+    })
   }
 
   rollDice(): void {
+    if(this.currentTurnId() !== this.myId || this.currentGameState()!.phase === 'setup') return;
+
     this.catanService.rollDice();
   }
 
@@ -203,7 +242,7 @@ export class CatanGameBoard {
   }
 
   tileClick(tileId: string) {
-    if (this.myPlayer()?.status != 'movingRobber') return;
+    if (this.myPlayer()?.pendingActions[0] != 'movingRobber') return;
 
     console.log('Clicked Tile ' + tileId)
     this.catanService.moveRobber(tileId);
@@ -230,12 +269,51 @@ export class CatanGameBoard {
     console.log(canAfford);
   }
 
+  selectOpponentCard(playerId: string) {
+    if (this.currentGameState()!.isStealingFrom.some(id => id === playerId))
+      this.catanService.playerStoleCard(playerId)
+    else return;
+  }
+
+  playerSelectedOwnCard(cardId: string) {
+    const selectedCard = document.getElementById(cardId);
+    // console.log(cardId)
+    // console.log(selectedCard)
+
+    if (selectedCard === null) return;
+
+    // Change this to happen on the component i guess
+    if (selectedCard.classList.contains('card-selected')) {
+      this.selectedCards.update(curr => [
+        ...curr.filter(card => card !== cardId)
+      ]
+      )
+      selectedCard.classList.remove('card-selected')
+    } else {
+      this.selectedCards.update(curr => [...curr, cardId]);
+      selectedCard.classList.add('card-selected')
+    }
+  }
+
+  giveCardsToBank() {
+    if (this.selectedCards().length !== Math.ceil(this.myHand().length / 2)) return;
+
+    this.catanService.playerSelectedOwnCards(this.selectedCards());
+
+    this.selectedCards.set([]);
+    let selectedCards = document.getElementsByClassName('card-selected');
+    for(const ele of selectedCards) {
+      ele.classList.remove('card-selected');
+    }
+  }
+
   endTurn() {
     // First two rounds of the game is setup - don't allow end turn if there is not a road and building placed this round.
     if (
       this.currentGameState()!.phase == 'setup' && 
       (this.currentGameState()!.roundNumber != this.myPlayer()!.placedRoads ||
-      this.currentGameState()!.roundNumber != this.myPlayer()!.placedBuildings)
+      this.currentGameState()!.roundNumber != this.myPlayer()!.placedBuildings) ||
+      this.currentTurnId() !== this.myId
     ) {
       return;
     }
